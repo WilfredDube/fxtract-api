@@ -61,10 +61,12 @@ func main() {
 	r.HandleFunc("/projects", projectController.FindAll).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.FindByID).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.Delete).Methods("DELETE")
-	r.HandleFunc("/projects/{id}", cadFileController.Upload).Methods("POST")
-	r.HandleFunc("/projects/project/{id}", cadFileController.FindByID).Methods("GET")
-	r.HandleFunc("/projects/project/{id}", cadFileController.Delete).Methods("DELETE")
-	r.HandleFunc("/projects/{id}/models", cadFileController.FindAll).Methods("GET")
+	r.HandleFunc("/projects/{id}", projectController.Upload).Methods("POST")
+	r.HandleFunc("/projects/project/{id}", projectController.FindCADFileByID).Methods("GET")
+	r.HandleFunc("/projects/project/{id}", projectController.DeleteCADFile).Methods("DELETE")
+	r.HandleFunc("/projects/files/{id}", projectController.FindAllCADFiles).Methods("GET")
+
+	r.HandleFunc("/projects/project/{id}", projectController.ProcessCADFile).Methods("POST")
 
 	// Tool creation
 	r.HandleFunc("/tools", toolController.AddTool).Methods("POST")
