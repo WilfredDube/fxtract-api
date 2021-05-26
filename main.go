@@ -38,13 +38,14 @@ func main() {
 	authService := service.NewAuthService(userRepo)
 	authController := controller.NewAuthController(authService, JWTService)
 
-	projectRepo := repository.NewProjectRepository(*repo)
-	projectService := service.NewProjectService(projectRepo)
-	projectController := controller.NewProjectController(projectService, userService, JWTService)
-
 	cadFileRepo := repository.NewCadFileRepository(*repo)
 	cadFileService := service.NewCadFileService(cadFileRepo)
-	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
+
+	projectRepo := repository.NewProjectRepository(*repo)
+	projectService := service.NewProjectService(projectRepo)
+	projectController := controller.NewProjectController(projectService, userService, cadFileService, JWTService)
+
+	// cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
