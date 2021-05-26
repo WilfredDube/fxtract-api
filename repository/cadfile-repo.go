@@ -25,7 +25,9 @@ type CADFileRepository interface {
 	FindAll(projectID string) ([]entity.CADFile, error)
 
 	// Delete a project
-	Delete(id string) (int64, error)
+	Delete(projectID string) (int64, error)
+
+	CascadeDelete(id string) (int64, error)
 }
 
 const (
@@ -166,6 +168,32 @@ func (r *cadFileRepoConnection) Delete(id string) (int64, error) {
 
 	filter := bson.M{"_id": cid}
 	cursor, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		if err == mongo.ErrNilCursor {
+			return 0, errors.Wrap(errors.New("Delete failed"), "repository.CADFile.Delete")
+		}
+		return 0, errors.Wrap(err, "repository.CADFile.Delete")
+	}
+
+	return cursor.DeletedCount, nil
+}
+
+func (r *cadFileRepoConnection) CascadeDelete(projectID string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
+
+	pid, err := primitive.ObjectIDFromHex(projectID)
+	if err != nil {
+		if err == mongo.ErrNilDocument {
+			return 0, errors.Wrap(errors.New("Project {id} incorrect"), "repository.CADFile.Find")
+		}
+		return 0, errors.Wrap(err, "repository.CADFile.Find")
+	}
+
+	filter := bson.M{"project_id": pid}
+	cursor, err := collection.DeleteMany(ctx, filter)
 	if err != nil {
 		if err == mongo.ErrNilCursor {
 			return 0, errors.Wrap(errors.New("Delete failed"), "repository.CADFile.Delete")

@@ -19,6 +19,7 @@ type CadFileService interface {
 	Find(id string) (*entity.CADFile, error)
 	FindAll(projectID string) ([]entity.CADFile, error)
 	Delete(id string) (int64, error)
+	CascadeDelete(id string) (int64, error)
 }
 
 type cadFileService struct{}
@@ -59,4 +60,8 @@ func (*cadFileService) FindAll(projectID string) ([]entity.CADFile, error) {
 
 func (*cadFileService) Delete(id string) (int64, error) {
 	return cadFileRepo.Delete(id)
+}
+
+func (*cadFileService) CascadeDelete(projectID string) (int64, error) {
+	return cadFileRepo.CascadeDelete(projectID)
 }
