@@ -16,18 +16,20 @@ type CADFileRepository interface {
 	// Create a new project
 	Create(project *entity.CADFile) (*entity.CADFile, error)
 
+	Update(cadFile entity.CADFile) (*entity.CADFile, error)
+
 	// Find a project by its id
 	Find(id string) (*entity.CADFile, error)
 
 	// Find all projects
-	FindAll() ([]entity.CADFile, error)
+	FindAll(projectID string) ([]entity.CADFile, error)
 
 	// Delete a project
 	Delete(id string) (int64, error)
 }
 
 const (
-	cadFileCollectionName string = "projects"
+	cadFileCollectionName string = "cadfiles"
 )
 
 // userRepoConnection -
@@ -42,7 +44,7 @@ func NewCadFileRepository(db configuration.MongoRepository) CADFileRepository {
 	}
 }
 
-func (r *cadFileRepoConnection) Create(cadfile *entity.CADFile) (*entity.CADFile, error) {
+func (r *cadFileRepoConnection) Create(cadFile *entity.CADFile) (*entity.CADFile, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 
@@ -50,14 +52,14 @@ func (r *cadFileRepoConnection) Create(cadfile *entity.CADFile) (*entity.CADFile
 	_, err := collection.InsertOne(
 		ctx,
 		bson.M{
-			"_id":           cadfile.ID,
-			"filename":      cadfile.FileName,
-			"step_url":      cadfile.StepURL,
-			"obj_url":       cadfile.ObjpURL,
-			"material_id":   cadfile.Material,
-			"filesize":      cadfile.Filesize,
-			"feature_props": cadfile.FeatureProps,
-			"created_at":    cadfile.CreatedAt,
+			"_id":           cadFile.ID,
+			"filename":      cadFile.FileName,
+			"step_url":      cadFile.StepURL,
+			"obj_url":       cadFile.ObjpURL,
+			"material_id":   cadFile.Material,
+			"filesize":      cadFile.Filesize,
+			"feature_props": cadFile.FeatureProps,
+			"created_at":    cadFile.CreatedAt,
 		},
 	)
 
@@ -65,14 +67,43 @@ func (r *cadFileRepoConnection) Create(cadfile *entity.CADFile) (*entity.CADFile
 		return nil, errors.Wrap(err, "repository.CADFile.Create")
 	}
 
-	return cadfile, nil
+	return cadFile, nil
+}
+
+func (r *cadFileRepoConnection) Update(cadFile entity.CADFile) (*entity.CADFile, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"_id": cadFile.ID},
+		bson.D{
+			{"$set", bson.M{
+				"_id":           cadFile.ID,
+				"project_id":    cadFile.ProjectID,
+				"filename":      cadFile.FileName,
+				"step_url":      cadFile.StepURL,
+				"obj_url":       cadFile.ObjpURL,
+				"material_id":   cadFile.Material,
+				"filesize":      cadFile.Filesize,
+				"feature_props": cadFile.FeatureProps,
+				"created_at":    cadFile.CreatedAt,
+			}}},
+	)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "repository.User.Update")
+	}
+
+	return &cadFile, nil
 }
 
 func (r *cadFileRepoConnection) Find(id string) (*entity.CADFile, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 
-	cadfile := &entity.CADFile{}
+	cadFile := &entity.CADFile{}
 	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
 
 	cid, err := primitive.ObjectIDFromHex(id)
@@ -84,7 +115,7 @@ func (r *cadFileRepoConnection) Find(id string) (*entity.CADFile, error) {
 	}
 
 	filter := bson.M{"_id": cid}
-	err = collection.FindOne(ctx, filter).Decode(&cadfile)
+	err = collection.FindOne(ctx, filter).Decode(&cadFile)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
 			return nil, errors.Wrap(errors.New("CADFile not found"), "repository.CADFile.Find")
@@ -92,17 +123,19 @@ func (r *cadFileRepoConnection) Find(id string) (*entity.CADFile, error) {
 		return nil, errors.Wrap(err, "repository.CADFile.Find")
 	}
 
-	return cadfile, nil
+	return cadFile, nil
 }
 
-func (r *cadFileRepoConnection) FindAll() ([]entity.CADFile, error) {
+func (r *cadFileRepoConnection) FindAll(projectID string) ([]entity.CADFile, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
+
+	id, err := primitive.ObjectIDFromHex(projectID)
 
 	cadfiles := &[]entity.CADFile{}
 	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
 
-	cursor, err := collection.Find(ctx, bson.M{})
+	cursor, err := collection.Find(ctx, bson.M{"project_id": id})
 	if err != nil {
 		if err == mongo.ErrNilDocument {
 			return nil, errors.Wrap(errors.New("Projects not found"), "repository.CADFile.FindAll")

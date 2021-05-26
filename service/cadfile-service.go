@@ -15,8 +15,9 @@ var (
 type CadFileService interface {
 	Validate(cadFile *entity.CADFile) error
 	Create(cadFile *entity.CADFile) (*entity.CADFile, error)
+	Update(cadFile entity.CADFile) (*entity.CADFile, error)
 	Find(id string) (*entity.CADFile, error)
-	FindAll() ([]entity.CADFile, error)
+	FindAll(projectID string) ([]entity.CADFile, error)
 	Delete(id string) (int64, error)
 }
 
@@ -29,27 +30,31 @@ func NewCadFileService(dbRepository repository.CADFileRepository) CadFileService
 }
 
 func (*cadFileService) Validate(cadFile *entity.CADFile) error {
-	if cadFile == nil {
+	if cadFile == nil || cadFile.FileName == "" {
 		return errors.New("CADFile is empty")
 	}
-
-	// if cadFile.Title == "" || cadFile.Description == "" {
-	// 	return errors.New("Title or description can not be empty")
-	// }
 
 	return nil
 }
 
-func (*cadFileService) Create(cadFile *entity.CADFile) (*entity.CADFile, error) {
+func (c *cadFileService) Create(cadFile *entity.CADFile) (*entity.CADFile, error) {
+	if err := c.Validate(cadFile); err != nil {
+		return nil, err
+	}
+
 	return cadFileRepo.Create(cadFile)
+}
+
+func (*cadFileService) Update(cadFile entity.CADFile) (*entity.CADFile, error) {
+	return cadFileRepo.Update(cadFile)
 }
 
 func (*cadFileService) Find(id string) (*entity.CADFile, error) {
 	return cadFileRepo.Find(id)
 }
 
-func (*cadFileService) FindAll() ([]entity.CADFile, error) {
-	return cadFileRepo.FindAll()
+func (*cadFileService) FindAll(projectID string) ([]entity.CADFile, error) {
+	return cadFileRepo.FindAll(projectID)
 }
 
 func (*cadFileService) Delete(id string) (int64, error) {

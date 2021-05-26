@@ -14,6 +14,7 @@ import (
 )
 
 type controller struct {
+	userService    service.UserService
 	projectService service.ProjectService
 	jwtService     service.JWTService
 }
@@ -27,8 +28,9 @@ type ProjectController interface {
 }
 
 // NewProjectController -
-func NewProjectController(service service.ProjectService, jwtService service.JWTService) ProjectController {
+func NewProjectController(service service.ProjectService, uService service.UserService, jwtService service.JWTService) ProjectController {
 	return &controller{
+		userService:    uService,
 		projectService: service,
 		jwtService:     jwtService,
 	}
@@ -51,6 +53,13 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
+
+		if _, err := c.userService.Profile(id); err != nil {
+			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 
 		project := &entity.Project{}
 		err := json.NewDecoder(r.Body).Decode(project)
@@ -81,7 +90,7 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		projectFolder := response.ID.Hex() + "/" + project.ID.Hex()
+		projectFolder := response.OwnerID.Hex() + "/" + response.ID.Hex()
 		helper.CreateFolder(projectFolder, false)
 
 		res := helper.BuildResponse(true, "OK", response)
@@ -111,6 +120,13 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
 
+		if _, err := c.userService.Profile(id); err != nil {
+			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
 		params := mux.Vars(r)
 		id = params["id"]
 
@@ -122,7 +138,7 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		res := helper.BuildErrorResponse("Project not found", "OK!", project)
+		res := helper.BuildResponse(true, "OK!", project)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return
@@ -181,13 +197,30 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		id := claims["user_id"].(string)
+
+		if _, err := c.userService.Profile(id); err != nil {
+			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
 		params := mux.Vars(r)
-		id := params["id"]
+		id = params["id"]
+
+		project, err := c.projectService.Find(id)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 
 		deleteCount, err := c.projectService.Delete(id)
 		if err != nil {
-			response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(response)
 			return
@@ -199,6 +232,10 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 			return
 		}
+
+		// TODO: delete project folder
+		projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
+		helper.DeleteFolder(projectFolder)
 
 		res := helper.BuildResponse(true, "OK", helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)

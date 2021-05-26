@@ -31,13 +31,17 @@ func main() {
 
 	JWTService := service.NewJWTService()
 
-	projectRepo := repository.NewProjectRepository(*repo)
-	projectService := service.NewProjectService(projectRepo)
-	projectController := controller.NewProjectController(projectService, JWTService)
-
 	userRepo := repository.NewUserRepository(*repo)
 	userService := service.NewUserService(userRepo)
 	userController := controller.NewUserController(userService, JWTService)
+
+	projectRepo := repository.NewProjectRepository(*repo)
+	projectService := service.NewProjectService(projectRepo)
+	projectController := controller.NewProjectController(projectService, userService, JWTService)
+
+	cadFileRepo := repository.NewCadFileRepository(*repo)
+	cadFileService := service.NewCadFileService(cadFileRepo)
+	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
 	r := mux.NewRouter()
 
@@ -45,15 +49,18 @@ func main() {
 	r.HandleFunc("/projects", projectController.FindAll).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.FindByID).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.Delete).Methods("DELETE")
+	r.HandleFunc("/projects/{id}", cadFileController.Upload).Methods("POST")
+	r.HandleFunc("/projects/project/{id}", cadFileController.FindByID).Methods("GET")
+	r.HandleFunc("/projects/project/{id}", cadFileController.Delete).Methods("DELETE")
+	r.HandleFunc("/projects/{id}/models", cadFileController.FindAll).Methods("GET")
 
 	authService := service.NewAuthService(userRepo)
 	authController := controller.NewAuthController(authService, JWTService)
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
 	r.HandleFunc("/api/auth/login", authController.Login).Methods("POST")
 
+	r.HandleFunc("/api/user", userController.Update).Methods("POST")
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
-	// r.HandleFunc("/register", userController.AddUser).Methods("POST")
-	// r.HandleFunc("/register", userController.AddUser).Methods("POST")
 
 	errs := make(chan error, 3)
 	go func() {

@@ -1,28 +1,16 @@
 package helper
 
 import (
-	"fmt"
 	"log"
+	"mime/multipart"
 	"os"
 	"path/filepath"
-
-	jwt "github.com/dgrijalva/jwt-go"
 )
 
 const (
 	// UploadFolder -
 	UploadFolder = "uploads/"
 )
-
-func verifyToken(tokenString string) (*jwt.Token, error) {
-	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method")
-		}
-
-		return []byte("secret"), nil
-	})
-}
 
 // CreateFolder -
 func CreateFolder(dir string, isMainFolder bool) {
@@ -38,12 +26,49 @@ func CreateFolder(dir string, isMainFolder bool) {
 		if errDir != nil {
 			log.Fatal(err)
 		}
-
 	}
 }
 
-func fileNameWithoutExtSlice(filename string) string {
+// DeleteFile -
+func DeleteFile(file string) {
+	_, err := os.Stat(file)
+
+	if os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	os.Remove(file)
+}
+
+// DeleteFolder -
+func DeleteFolder(dir string) {
+	dir = UploadFolder + dir
+	_, err := os.Stat(dir)
+
+	if os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+
+	os.RemoveAll(dir)
+}
+
+// FileNameWithoutExtSlice -
+func FileNameWithoutExtSlice(filename string) string {
 	return filename[:len(filename)-len(filepath.Ext(filename))]
+}
+
+// UploadBalanced -
+func UploadBalanced(files []*multipart.FileHeader) bool {
+	count := 0
+	for _, file := range files {
+		if filepath.Ext(file.Filename) == ".obj" {
+			count++
+		}
+	}
+
+	length := len(files) / 2
+
+	return (count == length)
 }
 
 // func getCadFileByID(cadFileID primitive.ObjectID) (model.CADFile, error) {

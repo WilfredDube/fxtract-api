@@ -5,7 +5,7 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 // CADFile -
 type CADFile struct {
 	ID           primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	ProjectID    primitive.ObjectID `json:"project_id" bson:"project_id" validate:"empty=false"`
+	ProjectID    primitive.ObjectID `json:"project_id" bson:"project_id,omitempty" validate:"empty=false"`
 	FileName     string             `json:"filename" bson:"filename" validate:"empty=false"`
 	StepURL      string             `json:"step_url" bson:"step_url" validate:"empty=false"`
 	ObjpURL      string             `json:"obj_url" bson:"obj_url" validate:"empty=false"`
