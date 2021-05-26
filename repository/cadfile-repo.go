@@ -53,6 +53,7 @@ func (r *cadFileRepoConnection) Create(cadFile *entity.CADFile) (*entity.CADFile
 		ctx,
 		bson.M{
 			"_id":           cadFile.ID,
+			"project_id":    cadFile.ProjectID,
 			"filename":      cadFile.FileName,
 			"step_url":      cadFile.StepURL,
 			"obj_url":       cadFile.ObjpURL,
