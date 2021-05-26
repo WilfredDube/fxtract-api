@@ -197,6 +197,7 @@ func (c *cadFileController) uploadHandler(r *http.Request, projectFolder string,
 			cadFile.Filesize = fileHeader.Size
 			cadFile.CreatedAt = time.Now().Unix()
 			cadFile.ProjectID = id
+			cadFile.BendFeatures = []entity.BendFeature{}
 
 			fileCache[tempCache[filename]] = cadFile
 
