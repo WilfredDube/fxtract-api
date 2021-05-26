@@ -72,7 +72,7 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 		result, err := c.materialService.Find(material.Name)
 		if result != nil {
 			response := helper.BuildErrorResponse("Material already exist", "Duplicate request", helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
