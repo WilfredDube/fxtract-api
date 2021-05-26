@@ -35,6 +35,9 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	userController := controller.NewUserController(userService, JWTService)
 
+	authService := service.NewAuthService(userRepo)
+	authController := controller.NewAuthController(authService, JWTService)
+
 	projectRepo := repository.NewProjectRepository(*repo)
 	projectService := service.NewProjectService(projectRepo)
 	projectController := controller.NewProjectController(projectService, userService, JWTService)
@@ -47,8 +50,13 @@ func main() {
 	toolService := service.NewToolService(toolRepo)
 	toolController := controller.NewToolController(toolService, userService, JWTService)
 
+	materialRepo := repository.NewMaterialRepository(*repo)
+	materialService := service.NewMaterialService(materialRepo)
+	materialController := controller.NewMaterialController(materialService, userService, JWTService)
+
 	r := mux.NewRouter()
 
+	// Project creation and CAD file upload
 	r.HandleFunc("/projects", projectController.AddProject).Methods("POST")
 	r.HandleFunc("/projects", projectController.FindAll).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.FindByID).Methods("GET")
@@ -58,17 +66,24 @@ func main() {
 	r.HandleFunc("/projects/project/{id}", cadFileController.Delete).Methods("DELETE")
 	r.HandleFunc("/projects/{id}/models", cadFileController.FindAll).Methods("GET")
 
+	// Tool creation
 	r.HandleFunc("/tools", toolController.AddTool).Methods("POST")
 	r.HandleFunc("/tools", toolController.FindAll).Methods("GET")
 	r.HandleFunc("/tools/{id}", toolController.FindByID).Methods("GET")
 	r.HandleFunc("/tools/{id}", toolController.FindByAngle).Methods("GET")
 	r.HandleFunc("/tools/{id}", toolController.Delete).Methods("DELETE")
 
-	authService := service.NewAuthService(userRepo)
-	authController := controller.NewAuthController(authService, JWTService)
+	// Material creation
+	r.HandleFunc("/materials", materialController.AddMaterial).Methods("POST")
+	r.HandleFunc("/materials", materialController.FindAll).Methods("GET")
+	r.HandleFunc("/materials/{id}", materialController.Find).Methods("GET")
+	r.HandleFunc("/materials/{id}", materialController.Delete).Methods("DELETE")
+
+	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
 	r.HandleFunc("/api/auth/login", authController.Login).Methods("POST")
 
+	// User account update and profile
 	r.HandleFunc("/api/user", userController.Update).Methods("POST")
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
 
