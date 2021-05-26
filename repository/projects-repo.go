@@ -19,6 +19,10 @@ type ProjectRepository interface {
 	// Find a project by its id
 	Find(id string) (*entity.Project, error)
 
+	FindByName(name string) (*entity.Project, error)
+
+	IsDuplicate(name string, OwnerID primitive.ObjectID) bool
+
 	// Find all projects
 	FindAll(ownerID string) ([]entity.Project, error)
 
@@ -90,6 +94,41 @@ func (r *projectRepoConnection) Find(id string) (*entity.Project, error) {
 	}
 
 	return project, nil
+}
+
+func (r *projectRepoConnection) FindByName(name string) (*entity.Project, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	project := &entity.Project{}
+	collection := r.connection.Client.Database(r.connection.Database).Collection(projectCollectionName)
+
+	filter := bson.M{"title": name}
+	err := collection.FindOne(ctx, filter).Decode(&project)
+	if err != nil {
+		if err == mongo.ErrNilDocument {
+			return nil, errors.Wrap(errors.New("Project not found"), "repository.Project.Find")
+		}
+		return nil, errors.Wrap(err, "repository.Project.Find")
+	}
+
+	return project, nil
+}
+
+func (r *projectRepoConnection) IsDuplicate(name string, OwnerID primitive.ObjectID) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	project := &entity.Project{}
+	collection := r.connection.Client.Database(r.connection.Database).Collection(projectCollectionName)
+
+	filter := bson.M{"title": name, "owner_id": OwnerID}
+	err := collection.FindOne(ctx, filter).Decode(&project)
+	if err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (r *projectRepoConnection) FindAll(ownerID string) ([]entity.Project, error) {

@@ -53,6 +53,7 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
+		OwnerID, _ := primitive.ObjectIDFromHex(id)
 
 		if _, err := c.userService.Profile(id); err != nil {
 			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
@@ -70,6 +71,14 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		result := c.projectService.IsDuplicate(project.Title, OwnerID)
+		if result == true {
+			response := helper.BuildErrorResponse("Project already exist", "Duplicate request", helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
 		err = c.projectService.Validate(project)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
@@ -79,7 +88,7 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		project.ID = primitive.NewObjectID()
-		project.OwnerID, _ = primitive.ObjectIDFromHex(id)
+		project.OwnerID = OwnerID
 		project.CreatedAt = time.Now().Unix()
 
 		response, err = c.projectService.Create(project)
