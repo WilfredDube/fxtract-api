@@ -43,6 +43,10 @@ func main() {
 	cadFileService := service.NewCadFileService(cadFileRepo)
 	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
+	toolRepo := repository.NewToolRepository(*repo)
+	toolService := service.NewToolService(toolRepo)
+	toolController := controller.NewToolController(toolService, userService, JWTService)
+
 	r := mux.NewRouter()
 
 	r.HandleFunc("/projects", projectController.AddProject).Methods("POST")
@@ -53,6 +57,12 @@ func main() {
 	r.HandleFunc("/projects/project/{id}", cadFileController.FindByID).Methods("GET")
 	r.HandleFunc("/projects/project/{id}", cadFileController.Delete).Methods("DELETE")
 	r.HandleFunc("/projects/{id}/models", cadFileController.FindAll).Methods("GET")
+
+	r.HandleFunc("/tools", toolController.AddTool).Methods("POST")
+	r.HandleFunc("/tools", toolController.FindAll).Methods("GET")
+	r.HandleFunc("/tools/{id}", toolController.FindByID).Methods("GET")
+	r.HandleFunc("/tools/{id}", toolController.FindByAngle).Methods("GET")
+	r.HandleFunc("/tools/{id}", toolController.Delete).Methods("DELETE")
 
 	authService := service.NewAuthService(userRepo)
 	authController := controller.NewAuthController(authService, JWTService)
