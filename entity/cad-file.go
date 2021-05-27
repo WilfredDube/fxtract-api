@@ -22,7 +22,7 @@ type FeatureProperty struct {
 	Thickness    float64 `json:"thickness" bson:"thickness" validate:"empty=false"`
 	BendingForce float64 `json:"bending_force" bson:"bending_force" validate:"empty=false"`
 	ProcessLevel int     `json:"process_level" bson:"process_level" validate:"empty=false"`
-	FRETime      int     `json:"fre_time" bson:"fre_time" validate:"empty=false"`
+	FRETime      float64 `json:"fre_time" bson:"fre_time" validate:"empty=false"`
 	BendCount    int     `json:"bend_count" bson:"bend_count" validate:"empty=false"`
 }
 
