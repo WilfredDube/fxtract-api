@@ -3,5 +3,10 @@
 	"database_connection":"mongodb://localhost:27017",
 	"database_name":"fxtract_db",
 	"database_timeout":30,
-	"restful_endpoint":":8000"
+	"restful_endpoint":":8000",
+	
+	"rabbit_host": "localhost", 
+ 	"rabbit_port": "5672"   ,  
+ 	"rabbit_user": "guest"  ,  
+ 	"rabbit_password": "guest" 
 }
