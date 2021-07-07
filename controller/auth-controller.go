@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -12,9 +13,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-// authService service.UserService
-)
+type loginResponse struct {
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+	Email     string `json:"email"`
+	Token     string `json:"token"`
+	CreatedAt int64  `json:"created_at"`
+}
 
 // AuthController -
 type AuthController interface {
@@ -35,11 +40,38 @@ func NewAuthController(authService service.AuthService, jwtService service.JWTSe
 	}
 }
 
+// NewLoginResponse return user details without sensitive password data
+func NewLoginResponse(user *entity.User) loginResponse {
+	return loginResponse{
+		Firstname: user.Firstname,
+		Lastname:  user.Lastname,
+		Email:     user.Email,
+		Token:     user.Token,
+		CreatedAt: user.CreatedAt,
+	}
+}
+
+func validate(user *entity.User) error {
+	if (user.Email == "") || (user.Password == "") {
+		return errors.New("email or password can not be empty")
+	}
+
+	return nil
+}
+
 func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	user := &entity.User{}
 	err := json.NewDecoder(r.Body).Decode(user)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	err = validate(user)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusBadRequest)
@@ -61,7 +93,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	user.CreatedAt = time.Now().Unix()
 	user.Token = c.jwtService.GenerateToken(user.ID.Hex())
 
-	res, err := c.authService.CreateUser(*user)
+	_, err = c.authService.CreateUser(*user)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed user registration", "User registration failed", helper.EmptyObj{})
 		w.WriteHeader(http.StatusConflict)
@@ -71,7 +103,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 
 	helper.CreateFolder(user.ID.Hex(), false)
 
-	response := helper.BuildResponse(true, "OK!", res)
+	response := helper.BuildResponse(true, "OK!", helper.EmptyObj{})
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
@@ -99,7 +131,8 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 	generatedToken := c.jwtService.GenerateToken(authResult.ID.Hex())
 	authResult.Token = generatedToken
 
-	response := helper.BuildResponse(true, "OK!", authResult)
+	userData := NewLoginResponse(&authResult)
+	response := helper.BuildResponse(true, "OK!", userData)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }

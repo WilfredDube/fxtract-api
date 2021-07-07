@@ -78,6 +78,7 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -91,7 +92,9 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		res := helper.BuildResponse(true, "OK", user)
+		userData := NewLoginResponse(user)
+
+		res := helper.BuildResponse(true, "OK", userData)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return

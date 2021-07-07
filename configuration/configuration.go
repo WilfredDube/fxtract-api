@@ -26,6 +26,11 @@ var (
 	DBTimeoutDefault    = 30
 	RestfulEPDefault    = ":8000"
 	RestfulTLSEPDefault = ":8080"
+
+	RabbitHostDefault     = "localhost"
+	RabbitPortDefault     = "5672"
+	RabbitUserDefault     = "guest"
+	RabbitPasswordDefault = "guest"
 )
 
 // ServiceConfig -
@@ -36,6 +41,11 @@ type ServiceConfig struct {
 	DatabaseTimeout    int    `json:"database_timeout"`    // dbtimeout
 	RestfulEndPoint    string `json:"restful_endpoint"`    // service connection end point
 	RestfulTLSEndPoint string `json:"restful_tlsendpoint"`
+
+	RabbitHost     string `json:"rabbit_host"`
+	RabbitPort     string `json:"rabbit_port"`
+	RabbitUser     string `json:"rabbit_user"`
+	RabbitPassword string `json:"rabbit_password"`
 }
 
 // ExtractConfiguration - extracts all database configurations from a file
@@ -47,6 +57,10 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 		DBTimeoutDefault,
 		RestfulEPDefault,
 		RestfulTLSEPDefault,
+		RabbitHostDefault,
+		RabbitPortDefault,
+		RabbitUserDefault,
+		RabbitPasswordDefault,
 	}
 
 	file, err := os.Open(filename)

@@ -11,9 +11,11 @@ import (
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/controller"
 	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/notification"
 	"github.com/WilfredDube/fxtract-backend/repository"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -41,9 +43,12 @@ func main() {
 	cadFileRepo := repository.NewCadFileRepository(*repo)
 	cadFileService := service.NewCadFileService(cadFileRepo)
 
+	processingPlanRepo := repository.NewProcessingPlanRepository(*repo)
+	processingPlanService := service.NewProcessingPlanService(processingPlanRepo)
+
 	projectRepo := repository.NewProjectRepository(*repo)
 	projectService := service.NewProjectService(projectRepo)
-	projectController := controller.NewProjectController(projectService, userService, cadFileService, JWTService)
+	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService)
 
 	// cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
@@ -55,6 +60,8 @@ func main() {
 	materialService := service.NewMaterialService(materialRepo)
 	materialController := controller.NewMaterialController(materialService, userService, JWTService)
 
+	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService)
+
 	r := mux.NewRouter()
 
 	// Project creation and CAD file upload
@@ -62,12 +69,14 @@ func main() {
 	r.HandleFunc("/projects", projectController.FindAll).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.FindByID).Methods("GET")
 	r.HandleFunc("/projects/{id}", projectController.Delete).Methods("DELETE")
-	r.HandleFunc("/projects/{id}", projectController.Upload).Methods("POST")
-	r.HandleFunc("/projects/project/{id}", projectController.FindCADFileByID).Methods("GET")
-	r.HandleFunc("/projects/project/{id}", projectController.DeleteCADFile).Methods("DELETE")
-	r.HandleFunc("/projects/files/{id}", projectController.FindAllCADFiles).Methods("GET")
+	r.HandleFunc("/projects/{id}", projectController.Upload).Methods("POST").Queries("operation", "{upload}")
+	r.HandleFunc("/projects/{id}/files", projectController.FindAllCADFiles).Methods("GET")
+	r.HandleFunc("/projects/{pid}/files/{id}", projectController.FindCADFileByID).Methods("GET")
+	r.HandleFunc("/projects/{pid}/files/{id}", projectController.DeleteCADFile).Methods("DELETE")
 
-	r.HandleFunc("/projects/project/{id}", projectController.ProcessCADFile).Methods("POST")
+	// Feature recognition / processing plan API based on the CAD file's process level
+	r.HandleFunc("/projects/{pid}/files/{id}", freController.ProcessCADFile).Methods("POST").Queries("operation", "{process}")
+	r.HandleFunc("/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
 
 	// Tool creation
 	r.HandleFunc("/tools", toolController.AddTool).Methods("POST")
@@ -90,16 +99,30 @@ func main() {
 	r.HandleFunc("/api/user", userController.Update).Methods("POST")
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
 
+	originsObj := handlers.AllowedOrigins([]string{"http://localhost:3000"})
+	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type", "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Header"})
+	methodsObj := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
+	server := handlers.CORS(originsObj, methodsObj, headersObj)(r)
+
 	errs := make(chan error, 3)
 	go func() {
-		fmt.Printf("Listening on port: %v", config.RestfulEndPoint)
-		errs <- http.ListenAndServe(config.RestfulEndPoint, r)
+		fmt.Printf("Listening on port: %v\n", config.RestfulEndPoint)
+		errs <- http.ListenAndServe(config.RestfulEndPoint, server)
 	}()
 
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT)
 		errs <- fmt.Errorf("%s", <-c)
+	}()
+
+	notificationService := notification.NewMQResponseController(config, cadFileService, processingPlanService, userService, JWTService)
+	go func() {
+		notificationService.FeatureRecognitionNotifications("FRECRESPONSE")
+	}()
+
+	go func() {
+		notificationService.ProcessingPlanNotifications("PPRESPONSE")
 	}()
 
 	fmt.Printf("Terminated %s\n", <-errs)

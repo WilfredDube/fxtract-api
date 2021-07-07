@@ -19,10 +19,11 @@ import (
 )
 
 type controller struct {
-	userService    service.UserService
-	jwtService     service.JWTService
-	cadFileService service.CadFileService
-	projectService service.ProjectService
+	userService           service.UserService
+	jwtService            service.JWTService
+	cadFileService        service.CadFileService
+	projectService        service.ProjectService
+	processingPlanService service.ProcessingPlanService
 }
 
 // ProjectController -
@@ -36,17 +37,16 @@ type ProjectController interface {
 	FindAllCADFiles(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
 	DeleteCADFile(w http.ResponseWriter, r *http.Request)
-
-	ProcessCADFile(w http.ResponseWriter, r *http.Request)
 }
 
 // NewProjectController -
-func NewProjectController(service service.ProjectService, uService service.UserService, cService service.CadFileService, jwtService service.JWTService) ProjectController {
+func NewProjectController(service service.ProjectService, uService service.UserService, cService service.CadFileService, pPlanService service.ProcessingPlanService, jwtService service.JWTService) ProjectController {
 	return &controller{
-		userService:    uService,
-		cadFileService: cService,
-		projectService: service,
-		jwtService:     jwtService,
+		userService:           uService,
+		cadFileService:        cService,
+		projectService:        service,
+		processingPlanService: pPlanService,
+		jwtService:            jwtService,
 	}
 }
 
@@ -104,6 +104,8 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		project.ID = primitive.NewObjectID()
 		project.OwnerID = OwnerID
 		project.CreatedAt = time.Now().Unix()
+		fmt.Println(time.Now())
+		fmt.Println(time.Now().UnixNano())
 
 		response, err = c.projectService.Create(project)
 		if err != nil {
@@ -116,9 +118,9 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		projectFolder := response.OwnerID.Hex() + "/" + response.ID.Hex()
 		helper.CreateFolder(projectFolder, false)
 
-		res := helper.BuildResponse(true, "OK", response)
+		// res := helper.BuildResponse(true, "OK", response)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
+		json.NewEncoder(w).Encode(response)
 		return
 	}
 
@@ -161,9 +163,9 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		res := helper.BuildResponse(true, "OK!", project)
+		// res := helper.BuildResponse(true, "OK!", project)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
+		json.NewEncoder(w).Encode(project)
 		return
 	}
 
@@ -196,9 +198,9 @@ func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		res := helper.BuildResponse(true, "OK", projects)
+		// res := helper.BuildResponse(true, "OK", projects)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
+		json.NewEncoder(w).Encode(projects)
 		return
 	}
 
@@ -306,8 +308,9 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(res)
 			return
 		}
+		sharedFolder := "/home/unbusy/go/src/github.com/WilfredDube/fxtract-backend-api-test/uploads/"
 
-		projectFolder := "./uploads/" + project.OwnerID.Hex() + "/" + project.ID.Hex()
+		projectFolder := sharedFolder + project.OwnerID.Hex() + "/" + project.ID.Hex()
 
 		uploadedFiles, err := c.uploadHandler(r, projectFolder, id)
 		if err != nil {
@@ -346,12 +349,16 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 
 	nFiles := len(files)
 
+	if nFiles == 0 {
+		return nil, fmt.Errorf("Select a file(s) to upload")
+	}
+
 	if (nFiles % 2) != 0 {
-		return nil, fmt.Errorf("Each STEP/IGES file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("Each STEP file must be uploaded with its corresponding obj file")
 	}
 
 	if !helper.UploadBalanced(files) {
-		return nil, fmt.Errorf("Unbalanced: Each STEP/IGES file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("Unbalanced: Each STEP file must be uploaded with its corresponding obj file")
 	}
 
 	for _, fileHeader := range files {
@@ -509,7 +516,7 @@ func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 
 		project, err := c.projectService.Find(projectID)
 		if err != nil {
-			res := helper.BuildErrorResponse("Project error", "The project you want to upload to does not exist", helper.EmptyObj{})
+			res := helper.BuildErrorResponse("Project error", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(res)
 			return
@@ -562,7 +569,15 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		deleteCount, err := c.cadFileService.Delete(id)
+		deleteCount, err := c.processingPlanService.Delete(id)
+		if err != nil {
+			res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		deleteCount, err = c.cadFileService.Delete(id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
@@ -581,53 +596,6 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 		helper.DeleteFile(cadFile.ObjpURL)
 
 		res := helper.BuildResponse(true, "OK!", deleteCount)
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
-}
-
-// ProcessCADFile -
-func (c *controller) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request: ", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-
-		params := mux.Vars(r)
-		id := params["id"]
-
-		cadFile, err := c.cadFileService.Find(id)
-		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
-
-		if cadFile.FeatureProps.ProcessLevel == 0 {
-			res := helper.BuildResponse(true, "Initiating feature recognition.............", cadFile)
-			json.NewEncoder(w).Encode(res)
-
-			// featureRecognition(cadFile.StepURL, cadFile.ID, *UserID*)
-			return
-		} else if cadFile.FeatureProps.ProcessLevel == 0 {
-			res := helper.BuildResponse(true, "Initiating process planning.............", cadFile)
-			json.NewEncoder(w).Encode(res)
-
-			// processPlanning(cadFile.FeatureProps.BendCount, cadFile.FeatureProps.SerialData, cadFile.ID, *UserID*)
-			return
-		}
-
-		res := helper.BuildResponse(true, "Nothing to do: displaying processing plan", cadFile)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return

@@ -62,6 +62,7 @@ func (r *cadFileRepoConnection) Create(cadFile *entity.CADFile) (*entity.CADFile
 			"material_id":   cadFile.Material,
 			"filesize":      cadFile.Filesize,
 			"feature_props": cadFile.FeatureProps,
+			"bend_features": cadFile.BendFeatures,
 			"created_at":    cadFile.CreatedAt,
 		},
 	)
@@ -91,6 +92,7 @@ func (r *cadFileRepoConnection) Update(cadFile entity.CADFile) (*entity.CADFile,
 				"material_id":   cadFile.Material,
 				"filesize":      cadFile.Filesize,
 				"feature_props": cadFile.FeatureProps,
+				"bend_features": cadFile.BendFeatures,
 				"created_at":    cadFile.CreatedAt,
 			}}},
 	)
