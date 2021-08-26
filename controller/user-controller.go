@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,6 +23,7 @@ type userController struct {
 // UserController -
 type UserController interface {
 	Update(w http.ResponseWriter, r *http.Request)
+	Promote(w http.ResponseWriter, r *http.Request)
 	Profile(w http.ResponseWriter, r *http.Request)
 	GetAllUsers(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
@@ -59,7 +61,7 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		uid, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
 
-	user.ID = uid
+		user.ID = uid
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
@@ -80,13 +82,13 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 
 		user.CreatedAt = n
 
-	u, err := c.userService.Update(user)
-	if err != nil {
-		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
+		u, err := c.userService.Update(user)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 
 		userData := NewLoginResponse(u)
 
@@ -101,7 +103,56 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-	w.WriteHeader(http.StatusOK)
+func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		params := mux.Vars(r)
+		op := r.FormValue("operation")
+
+		fmt.Println(op)
+		uid := params["id"]
+
+		user, err := c.userService.Profile(uid)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		if op == "promote" {
+			user.UserRole = entity.ADMIN
+		} else {
+			user.UserRole = entity.GENERAL_USER
+		}
+
+		u, err := c.userService.Update(user)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to promote user", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		userData := NewLoginResponse(u)
+
+		response := helper.BuildResponse(true, "OK", userData)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response := helper.BuildErrorResponse("Failed to process request", "User not found", helper.EmptyObj{})
+	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(response)
 }
 
