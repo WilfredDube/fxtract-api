@@ -103,9 +103,9 @@ func main() {
 
 	/* ---------------- Admin endpoints ------------------*/
 
-	r.HandleFunc("/api/admin/users", userController.GetAllUsers).Methods("GET")
-	r.HandleFunc("/api/admin/users", authController.Register).Methods("POST")
-	r.HandleFunc("/api/admin/users/{id}", userController.Promote).Methods("PUT")
+	r.HandleFunc("/api/admin/users", middleware.CheckAdminRole(JWTService, userController.GetAllUsers)).Methods("GET")
+	r.HandleFunc("/api/admin/users", middleware.CheckAdminRole(JWTService, authController.Register)).Methods("POST")
+	r.HandleFunc("/api/admin/users/{id}", middleware.CheckAdminRole(JWTService, userController.Promote)).Methods("PUT")
 
 	// Tool creation
 	r.HandleFunc("/api/admin/tools", toolController.AddTool).Methods("POST")
@@ -121,7 +121,7 @@ func main() {
 	r.HandleFunc("/api/admin/materials/{id}", materialController.Delete).Methods("DELETE")
 
 	// files uploaded
-	r.HandleFunc("/api/admin/files", cadFileController.FindAllFiles).Methods("GET")
+	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
 
 	// processes: type, status
 
