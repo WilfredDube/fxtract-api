@@ -128,8 +128,13 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generatedToken := c.jwtService.GenerateToken(authResult.ID.Hex())
-	authResult.Token = generatedToken
+	err = c.jwtService.SetAuthentication(authResult.ID.Hex(), "fxtract", 86400*7, service.LOGIN, w, r)
+	if err != nil {
+		response := helper.BuildErrorResponse("Please check again your credential", "Invalid Credential", helper.EmptyObj{})
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
 	userData := NewLoginResponse(&authResult)
 	response := helper.BuildResponse(true, "OK!", userData)
