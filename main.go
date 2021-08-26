@@ -11,16 +11,17 @@ import (
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/controller"
 	"github.com/WilfredDube/fxtract-backend/helper"
-	"github.com/WilfredDube/fxtract-backend/notification"
 	"github.com/WilfredDube/fxtract-backend/repository"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 var (
 	configPath = flag.String("c", "./configuration/config.json", "Set the configuration file for setting up the database.")
+	store      = sessions.NewCookieStore([]byte("oNrT10hnwnnUTeiwqm1ISP6W5qXmHWkT"))
 )
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 	config, _ := configuration.ExtractConfiguration(*configPath)
 	repo := persistence.NewPersistenceLayer(config)
 
-	JWTService := service.NewJWTService()
+	JWTService := service.NewJWTService(store)
 
 	userRepo := repository.NewUserRepository(*repo)
 	userService := service.NewUserService(userRepo)
