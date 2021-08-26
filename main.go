@@ -98,14 +98,33 @@ func main() {
 	r.HandleFunc("/api/auth/logout", authController.Logout).Methods("POST")
 
 	// User account update and profile
-	r.HandleFunc("/api/user", userController.Update).Methods("POST")
+	r.HandleFunc("/api/user", userController.Update).Methods("PUT")
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
 
+	/* ---------------- Admin endpoints ------------------*/
+
+	r.HandleFunc("/api/admin/users", userController.GetAllUsers).Methods("GET")
+	r.HandleFunc("/api/admin/users", authController.Register).Methods("POST")
+	r.HandleFunc("/api/admin/users/{id}", userController.Promote).Methods("PUT")
+
+	// Tool creation
+	r.HandleFunc("/api/admin/tools", toolController.AddTool).Methods("POST")
+	r.HandleFunc("/api/admin/tools", toolController.FindAll).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", toolController.FindByID).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", toolController.FindByAngle).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", toolController.Delete).Methods("DELETE")
+
+	// Material creation
+	r.HandleFunc("/api/admin/materials", materialController.AddMaterial).Methods("POST")
+	r.HandleFunc("/api/admin/materials", materialController.FindAll).Methods("GET")
+	r.HandleFunc("/api/admin/materials/{id}", materialController.Find).Methods("GET")
+	r.HandleFunc("/api/admin/materials/{id}", materialController.Delete).Methods("DELETE")
 
 	// files uploaded
 	r.HandleFunc("/api/admin/files", cadFileController.FindAllFiles).Methods("GET")
 
 	// processes: type, status
+
 	originsObj := handlers.AllowedOrigins([]string{"http://localhost:3000"})
 	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type", "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Header"})
 	methodsObj := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
