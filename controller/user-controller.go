@@ -162,7 +162,7 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 
 	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
 	if err != nil {
-		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		response := helper.BuildErrorResponse("Unauthorised", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
