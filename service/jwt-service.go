@@ -2,10 +2,13 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/sessions"
+)
 
 // DBTYPE -
 type AUTHTYPE string
@@ -21,6 +24,7 @@ type JWTService interface {
 	GenerateToken(userID string) string
 	ValidateToken(token string) (*jwt.Token, error)
 	SetAuthentication(userID string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
+	GetAuthenticationToken(r *http.Request, cookieName string) *jwt.Token
 }
 
 type jwtCustomClaim struct {
@@ -109,3 +113,23 @@ func (j *jwtService) SetAuthentication(useid string, cookieName string, maxAge i
 	return nil
 }
 
+func (j *jwtService) GetAuthenticationToken(r *http.Request, cookieName string) *jwt.Token {
+	session, err := j.store.Get(r, cookieName)
+	if err != nil {
+		return nil
+	}
+
+	// Check if user is authenticated
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		fmt.Print(ok)
+		return nil
+	}
+
+	authHeader := session.Values["token"].(string)
+	token, errToken := j.ValidateToken(authHeader)
+	if errToken != nil {
+		return nil
+	}
+
+	return token
+}
