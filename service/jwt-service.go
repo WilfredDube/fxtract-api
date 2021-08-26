@@ -20,6 +20,7 @@ const (
 type JWTService interface {
 	GenerateToken(userID string) string
 	ValidateToken(token string) (*jwt.Token, error)
+	SetAuthentication(userID string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
 }
 
 type jwtCustomClaim struct {
@@ -73,3 +74,38 @@ func (j *jwtService) ValidateToken(token string) (*jwt.Token, error) {
 		return []byte(j.secretKey), nil
 	})
 }
+
+func (j *jwtService) SetAuthentication(useid string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error {
+	session, err := j.store.Get(r, cookieName)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	session.Options = &sessions.Options{
+		HttpOnly: true,
+		// Secure:   true,
+		MaxAge: maxAge,
+		Path:   "/",
+	}
+
+	if authType == LOGIN {
+		generatedToken := j.GenerateToken(useid)
+		session.Values["authenticated"] = true
+		session.Values["token"] = generatedToken
+	} else {
+		if session.Values["authenticated"] == false {
+			return fmt.Errorf("already signed out")
+		}
+		session.Values["authenticated"] = false
+		session.Values["token"] = ""
+	}
+
+	err = sessions.Save(r, w)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
