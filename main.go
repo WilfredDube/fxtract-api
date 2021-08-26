@@ -11,6 +11,7 @@ import (
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/controller"
 	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/middleware"
 	"github.com/WilfredDube/fxtract-backend/repository"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
@@ -66,31 +67,18 @@ func main() {
 	r := mux.NewRouter()
 
 	// Project creation and CAD file upload
-	r.HandleFunc("/projects", projectController.AddProject).Methods("POST")
-	r.HandleFunc("/projects", projectController.FindAll).Methods("GET")
-	r.HandleFunc("/projects/{id}", projectController.FindByID).Methods("GET")
-	r.HandleFunc("/projects/{id}", projectController.Delete).Methods("DELETE")
-	r.HandleFunc("/projects/{id}", projectController.Upload).Methods("POST").Queries("operation", "{upload}")
-	r.HandleFunc("/projects/{id}/files", projectController.FindAllCADFiles).Methods("GET")
-	r.HandleFunc("/projects/{pid}/files/{id}", projectController.FindCADFileByID).Methods("GET")
-	r.HandleFunc("/projects/{pid}/files/{id}", projectController.DeleteCADFile).Methods("DELETE")
+	r.HandleFunc("/api/user/projects", projectController.AddProject).Methods("POST")
+	r.HandleFunc("/api/user/projects", projectController.FindAll).Methods("GET")
+	r.HandleFunc("/api/user/projects/{id}", projectController.FindByID).Methods("GET")
+	r.HandleFunc("/api/user/projects/{id}", projectController.Delete).Methods("DELETE")
+	r.HandleFunc("/api/user/projects/{id}", projectController.Upload).Methods("POST").Queries("operation", "{upload}")
+	r.HandleFunc("/api/user/projects/{id}/files", projectController.FindAllCADFiles).Methods("GET")
+	r.HandleFunc("/api/user/projects/{pid}/files/{id}", projectController.FindCADFileByID).Methods("GET")
+	r.HandleFunc("/api/user/projects/{pid}/files/{id}", projectController.DeleteCADFile).Methods("DELETE")
 
 	// Feature recognition / processing plan API based on the CAD file's process level
-	r.HandleFunc("/projects/{pid}/files/{id}", freController.ProcessCADFile).Methods("POST").Queries("operation", "{process}")
-	r.HandleFunc("/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
-
-	// Tool creation
-	r.HandleFunc("/tools", toolController.AddTool).Methods("POST")
-	r.HandleFunc("/tools", toolController.FindAll).Methods("GET")
-	r.HandleFunc("/tools/{id}", toolController.FindByID).Methods("GET")
-	r.HandleFunc("/tools/{id}", toolController.FindByAngle).Methods("GET")
-	r.HandleFunc("/tools/{id}", toolController.Delete).Methods("DELETE")
-
-	// Material creation
-	r.HandleFunc("/materials", materialController.AddMaterial).Methods("POST")
-	r.HandleFunc("/materials", materialController.FindAll).Methods("GET")
-	r.HandleFunc("/materials/{id}", materialController.Find).Methods("GET")
-	r.HandleFunc("/materials/{id}", materialController.Delete).Methods("DELETE")
+	r.HandleFunc("/api/user/projects/{pid}/files/{id}", freController.ProcessCADFile).Methods("POST").Queries("operation", "{process}")
+	r.HandleFunc("/api/user/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
 
 	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
