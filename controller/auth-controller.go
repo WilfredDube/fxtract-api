@@ -81,7 +81,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dup := c.authService.IsDuplicateEmail(user.Email)
-	if dup == true {
+	if dup {
 		response := helper.BuildErrorResponse("Failed to process request", "Duplicate email", helper.EmptyObj{})
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(response)
@@ -89,10 +89,19 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed user registration", "User registration failed", helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	user.ID = primitive.NewObjectID()
 	user.Password = string(hash)
 	user.CreatedAt = time.Now().Unix()
+	if user.UserRole == 0 {
 	user.UserRole = entity.GENERAL_USER
+	}
 
 	_, err = c.authService.CreateUser(*user)
 	if err != nil {
