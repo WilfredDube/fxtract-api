@@ -39,14 +39,13 @@ func NewMaterialController(service service.MaterialService, uService service.Use
 func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-
 	var response *entity.Material
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -109,8 +108,8 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -153,8 +152,8 @@ func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -187,8 +186,8 @@ func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *materialController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)

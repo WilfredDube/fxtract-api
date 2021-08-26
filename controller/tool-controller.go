@@ -40,8 +40,8 @@ func NewToolController(service service.ToolService, uService service.UserService
 func (c *toolController) AddTool(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -110,8 +110,8 @@ func (c *toolController) AddTool(w http.ResponseWriter, r *http.Request) {
 func (c *toolController) FindByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -153,8 +153,8 @@ func (c *toolController) FindByID(w http.ResponseWriter, r *http.Request) {
 func (c *toolController) FindByAngle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -197,8 +197,8 @@ func (c *toolController) FindByAngle(w http.ResponseWriter, r *http.Request) {
 func (c *toolController) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -231,8 +231,8 @@ func (c *toolController) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *toolController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)

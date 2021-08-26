@@ -54,8 +54,8 @@ func NewProjectController(service service.ProjectService, uService service.UserS
 func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -132,8 +132,8 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -176,8 +176,8 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -210,8 +210,8 @@ func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -275,8 +275,8 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -461,8 +461,8 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 func (c *controller) FindCADFileByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -493,8 +493,8 @@ func (c *controller) FindCADFileByID(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -541,8 +541,8 @@ func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)

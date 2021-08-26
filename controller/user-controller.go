@@ -41,8 +41,8 @@ func NewUserController(service service.UserService, jwtService service.JWTServic
 func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -50,7 +50,7 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := &entity.User{}
-	err := json.NewDecoder(r.Body).Decode(user)
+	err = json.NewDecoder(r.Body).Decode(user)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusBadRequest)
@@ -106,8 +106,8 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -160,8 +160,8 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -195,8 +195,8 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -229,33 +229,40 @@ func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	params := mux.Vars(r)
-	id := params["id"]
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		_ = claims["user_id"].(string)
+		params := mux.Vars(r)
+		id := params["id"]
 
-	deleteCount, err := c.userService.Delete(id)
-	if err != nil {
-		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+		deleteCount, err := c.userService.Delete(id)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		if deleteCount == 0 {
+			response := helper.BuildResponse(true, "User not found", helper.EmptyObj{})
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		response := helper.BuildResponse(true, "User deletion successful", helper.EmptyObj{})
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
-		return
 	}
 
-	if deleteCount == 0 {
-		response := helper.BuildResponse(true, "User not found", helper.EmptyObj{})
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	response := helper.BuildResponse(true, "User deletion successful", helper.EmptyObj{})
-	w.WriteHeader(http.StatusOK)
+	response := helper.BuildErrorResponse("Failed to process request", "User not found", helper.EmptyObj{})
+	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(response)
 }

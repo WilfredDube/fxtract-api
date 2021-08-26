@@ -158,8 +158,8 @@ func (c *freController) GenerateProcessingPlan(UserID string, cadFile *entity.CA
 func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -218,8 +218,8 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)

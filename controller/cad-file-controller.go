@@ -50,8 +50,8 @@ func NewCADFileController(service service.CadFileService, pService service.Proje
 func (c *cadFileController) Upload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -63,6 +63,12 @@ func (c *cadFileController) Upload(w http.ResponseWriter, r *http.Request) {
 
 		params := mux.Vars(r)
 		id, err := primitive.ObjectIDFromHex(params["id"])
+		if err != nil {
+			res := helper.BuildErrorResponse("Project error", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
 
 		project, err := c.projectService.Find(params["id"])
 		if err != nil {
@@ -241,8 +247,8 @@ func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -270,8 +276,8 @@ func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 func (c *cadFileController) FindByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -302,14 +308,13 @@ func (c *cadFileController) FindByID(w http.ResponseWriter, r *http.Request) {
 func (c *cadFileController) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		ownerID, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
 
@@ -349,8 +354,8 @@ func (c *cadFileController) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *cadFileController) FindAllFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
@@ -379,8 +384,8 @@ func (c *cadFileController) FindAllFiles(w http.ResponseWriter, r *http.Request)
 func (c *cadFileController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
-	if token == nil {
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
