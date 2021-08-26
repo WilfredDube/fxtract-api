@@ -21,7 +21,7 @@ const (
 // var -
 var (
 	DBTypeDefault       = MONGODB
-	DBConnectionDefault = "mongodb://localhost:27017"
+	DBConnectionDefault = "mongodb://mongo"
 	DBNameDefault       = "fxtract_db"
 	DBTimeoutDefault    = 30
 	RestfulEPDefault    = ":8000"

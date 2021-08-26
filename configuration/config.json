@@ -1,6 +1,6 @@
 {
 	"database_type":"mongodb",
-	"database_connection":"mongodb://localhost:27017",
+	"database_connection":"mongodb://mongo",
 	"database_name":"fxtract_db",
 	"database_timeout":30,
 	"restful_endpoint":":8000",
