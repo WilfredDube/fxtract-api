@@ -14,11 +14,11 @@ import (
 )
 
 type loginResponse struct {
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Email     string `json:"email"`
-	Token     string `json:"token"`
-	CreatedAt int64  `json:"created_at"`
+	Firstname string      `json:"firstname"`
+	Lastname  string      `json:"lastname"`
+	Email     string      `json:"email"`
+	UserRole  entity.Role `json:"role"`
+	CreatedAt int64       `json:"created_at"`
 }
 
 // AuthController -
@@ -46,7 +46,7 @@ func NewLoginResponse(user *entity.User) loginResponse {
 		Firstname: user.Firstname,
 		Lastname:  user.Lastname,
 		Email:     user.Email,
-		Token:     user.Token,
+		UserRole:  user.UserRole,
 		CreatedAt: user.CreatedAt,
 	}
 }
@@ -91,7 +91,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	user.ID = primitive.NewObjectID()
 	user.Password = string(hash)
 	user.CreatedAt = time.Now().Unix()
-	user.Token = c.jwtService.GenerateToken(user.ID.Hex())
+	user.UserRole = entity.GENERAL_USER
 
 	_, err = c.authService.CreateUser(*user)
 	if err != nil {

@@ -65,7 +65,7 @@ func (r *userRepoConnection) Create(user *entity.User) (*entity.User, error) {
 			"lastname":   user.Lastname,
 			"email":      user.Email,
 			"password":   user.Password,
-			"token":      user.Token,
+			"role":       user.UserRole,
 			"created_at": user.CreatedAt,
 		},
 	)
@@ -93,7 +93,7 @@ func (r *userRepoConnection) Update(user entity.User) (*entity.User, error) {
 				"lastname":   user.Lastname,
 				"email":      user.Email,
 				"password":   user.Password,
-				"token":      user.Token,
+				"role":       user.UserRole,
 				"created_at": user.CreatedAt,
 			}}},
 	)
