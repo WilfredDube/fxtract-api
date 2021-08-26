@@ -35,13 +35,15 @@ type jwtCustomClaim struct {
 type jwtService struct {
 	secretKey string
 	issuer    string
+	store     *sessions.CookieStore
 }
 
 //NewJWTService method is creates a new instance of JWTService
-func NewJWTService() JWTService {
+func NewJWTService(store *sessions.CookieStore) JWTService {
 	return &jwtService{
 		issuer:    "Fxtract",
 		secretKey: getSecretKey(),
+		store:     store,
 	}
 }
 
@@ -73,7 +75,7 @@ func (j *jwtService) GenerateToken(UserID string) string {
 func (j *jwtService) ValidateToken(token string) (*jwt.Token, error) {
 	return jwt.Parse(token, func(t_ *jwt.Token) (interface{}, error) {
 		if _, ok := t_.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method %v", t_.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method %v", t_.Header["alg"])
 		}
 		return []byte(j.secretKey), nil
 	})
