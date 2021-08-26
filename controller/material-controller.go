@@ -39,11 +39,10 @@ func NewMaterialController(service service.MaterialService, uService service.Use
 func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -110,11 +109,10 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -146,7 +144,7 @@ func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := helper.BuildErrorResponse("Material not found", errToken.Error(), helper.EmptyObj{})
+	res := helper.BuildErrorResponse("Material not found", "Unknown material ID", helper.EmptyObj{})
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(res)
 }
@@ -155,11 +153,10 @@ func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -181,7 +178,7 @@ func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := helper.BuildErrorResponse("Material not found", errToken.Error(), helper.EmptyObj{})
+	res := helper.BuildErrorResponse("Material not found", "Unknown material ID", helper.EmptyObj{})
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(res)
 }
@@ -190,11 +187,10 @@ func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *materialController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}

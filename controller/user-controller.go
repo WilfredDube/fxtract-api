@@ -36,6 +36,14 @@ func NewUserController(service service.UserService, jwtService service.JWTServic
 func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	user := &entity.User{}
 	err := json.NewDecoder(r.Body).Decode(user)
 	if err != nil {
@@ -43,12 +51,6 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(response)
 		return
-	}
-
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		panic(errToken.Error())
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
@@ -72,11 +74,10 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -108,6 +109,14 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 // Delete -
 func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
 	params := mux.Vars(r)
 	id := params["id"]

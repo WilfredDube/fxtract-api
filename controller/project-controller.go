@@ -54,11 +54,10 @@ func NewProjectController(service service.ProjectService, uService service.UserS
 func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -133,11 +132,10 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -157,7 +155,7 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 
 		project, err := c.projectService.Find(id)
 		if err != nil {
-			res := helper.BuildErrorResponse("Project not found", err.Error(), helper.EmptyObj{})
+			res := helper.BuildErrorResponse("Project not found", "Unknown project id", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(res)
 			return
@@ -169,7 +167,7 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := helper.BuildErrorResponse("Project not found", errToken.Error(), helper.EmptyObj{})
+	res := helper.BuildErrorResponse("Project not found", "Unknown project id", helper.EmptyObj{})
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(res)
 }
@@ -178,11 +176,10 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -204,7 +201,7 @@ func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := helper.BuildErrorResponse("Project not found", errToken.Error(), helper.EmptyObj{})
+	res := helper.BuildErrorResponse("Project not found", "Unknown project id", helper.EmptyObj{})
 	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(res)
 }
@@ -213,11 +210,10 @@ func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -251,7 +247,7 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if 0 == deleteCount {
+		if deleteCount == 0 {
 			response := helper.BuildErrorResponse("Failed to process request", "Project not found", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(response)
@@ -279,11 +275,10 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request: ", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -308,7 +303,7 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-		sharedFolder := "/home/unbusy/go/src/github.com/WilfredDube/fxtract-backend-api-test/uploads/"
+		sharedFolder := "/home/unbusy/Projects/fxtract/fxtract-api/uploads/"
 
 		projectFolder := sharedFolder + project.OwnerID.Hex() + "/" + project.ID.Hex()
 
@@ -466,11 +461,10 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 func (c *controller) FindCADFileByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request: ", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -499,11 +493,10 @@ func (c *controller) FindCADFileByID(w http.ResponseWriter, r *http.Request) {
 func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request: ", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -548,11 +541,10 @@ func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	authHeader := r.Header.Get("Authorization")
-	token, errToken := c.jwtService.ValidateToken(authHeader)
-	if errToken != nil {
-		response := helper.BuildErrorResponse("Failed to process request: ", errToken.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
