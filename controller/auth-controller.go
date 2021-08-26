@@ -25,6 +25,7 @@ type loginResponse struct {
 type AuthController interface {
 	Register(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
+	Logout(w http.ResponseWriter, r *http.Request)
 }
 
 type authController struct {
@@ -138,6 +139,22 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 
 	userData := NewLoginResponse(&authResult)
 	response := helper.BuildResponse(true, "OK!", userData)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (c *authController) Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	err := c.jwtService.SetAuthentication("", "fxtract", -1, service.LOGOUT, w, r)
+	if err != nil {
+		response := helper.BuildErrorResponse("Already logged off", "Invalid procedure", helper.EmptyObj{})
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response := helper.BuildResponse(true, "OK!", "Logout successful")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
