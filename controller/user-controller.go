@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/helper"
@@ -10,6 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type userController struct {
@@ -54,9 +56,29 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
-	uid, err := primitive.ObjectIDFromHex(claims["id"].(string))
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		uid, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
+
 	user.ID = uid
+		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		user.Password = string(hash)
+
+		n, err := strconv.ParseInt(claims["created_at"].(string), 10, 64)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		user.CreatedAt = n
 
 	u, err := c.userService.Update(user)
 	if err != nil {
@@ -66,7 +88,19 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := helper.BuildResponse(true, "OK!", u)
+		userData := NewLoginResponse(u)
+
+		response := helper.BuildResponse(true, "OK", userData)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response := helper.BuildErrorResponse("Failed to process request", "User not found", helper.EmptyObj{})
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(response)
+}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
