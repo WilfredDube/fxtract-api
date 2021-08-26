@@ -12,6 +12,8 @@ services:
       - .:/app
     depends_on:
       - "mongo"
+      - "redis"
+
   mongo:
     image: mongo
     ports:
@@ -19,12 +21,19 @@ services:
     volumes:
       - "mongo-data:/data/db"
     restart: always
+
   mongo-express:
     image: mongo-express
     ports:
       - 8081:8081
     depends_on:
       - "mongo"
+    restart: always
+
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
     restart: always
 
 volumes:
