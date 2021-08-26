@@ -32,6 +32,7 @@ type CadFileController interface {
 	Upload(w http.ResponseWriter, r *http.Request)
 	FindByID(w http.ResponseWriter, r *http.Request)
 	FindAll(w http.ResponseWriter, r *http.Request)
+	FindAllFiles(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
 	uploadHandler(r *http.Request, projectFolder string, id primitive.ObjectID) (*[]entity.CADFile, error)
 }
@@ -339,6 +340,35 @@ func (c *cadFileController) FindAll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		res := helper.BuildResponse(true, "OK!", cadFiles)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+}
+
+func (c *cadFileController) FindAllFiles(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		_, _ = primitive.ObjectIDFromHex(claims["user_id"].(string))
+
+		projects, err := c.cadFileService.FindAllFiles()
+		if err != nil {
+			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		res := helper.BuildResponse(true, "OK!", projects)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return

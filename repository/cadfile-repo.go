@@ -24,6 +24,8 @@ type CADFileRepository interface {
 	// Find all projects
 	FindAll(projectID string) ([]entity.CADFile, error)
 
+	FindAllFiles() ([]entity.CADFile, error)
+
 	// Delete a project
 	Delete(projectID string) (int64, error)
 
@@ -144,6 +146,27 @@ func (r *cadFileRepoConnection) FindAll(projectID string) ([]entity.CADFile, err
 	if err != nil {
 		if err == mongo.ErrNilDocument {
 			return nil, errors.Wrap(errors.New("Projects not found"), "repository.CADFile.FindAll")
+		}
+		return nil, errors.Wrap(err, "repository.CADFile.FindAll")
+	}
+
+	cursor.All(ctx, cadfiles)
+	defer cursor.Close(ctx)
+
+	return *cadfiles, nil
+}
+
+func (r *cadFileRepoConnection) FindAllFiles() ([]entity.CADFile, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	cadfiles := &[]entity.CADFile{}
+	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
+
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		if err == mongo.ErrNilDocument {
+			return nil, errors.Wrap(errors.New("CAD files not found"), "repository.CADFile.FindAll")
 		}
 		return nil, errors.Wrap(err, "repository.CADFile.FindAll")
 	}
