@@ -51,7 +51,7 @@ func main() {
 	projectService := service.NewProjectService(projectRepo)
 	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService)
 
-	// cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
+	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
@@ -101,6 +101,11 @@ func main() {
 	r.HandleFunc("/api/user", userController.Update).Methods("POST")
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
 
+
+	// files uploaded
+	r.HandleFunc("/api/admin/files", cadFileController.FindAllFiles).Methods("GET")
+
+	// processes: type, status
 	originsObj := handlers.AllowedOrigins([]string{"http://localhost:3000"})
 	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type", "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Header"})
 	methodsObj := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
