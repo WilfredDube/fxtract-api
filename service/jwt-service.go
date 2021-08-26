@@ -106,7 +106,7 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 			generatedToken := j.GenerateToken(user.ID.Hex(), time)
 			session.Values["authenticated"] = true
 			session.Values["token"] = generatedToken
-			session.Values["user"] = user
+			session.Values["user_role"] = int(user.UserRole)
 
 			err = sessions.Save(r, w)
 		}
@@ -116,7 +116,7 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 		}
 		session.Values["authenticated"] = false
 		session.Values["token"] = ""
-		session.Values["user"] = nil
+		session.Values["user_role"] = -1
 		session.Options.MaxAge = maxAge
 
 		err = sessions.Save(r, w)
