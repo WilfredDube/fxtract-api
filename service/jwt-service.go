@@ -26,7 +26,6 @@ type JWTService interface {
 	SetAuthentication(userID string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
 	GetAuthenticationToken(r *http.Request, cookieName string) *jwt.Token
 }
-
 type jwtCustomClaim struct {
 	UserID string `json:"user_id"`
 	jwt.StandardClaims
@@ -88,26 +87,31 @@ func (j *jwtService) SetAuthentication(useid string, cookieName string, maxAge i
 		return err
 	}
 
-	session.Options = &sessions.Options{
-		HttpOnly: true,
-		// Secure:   true,
-		MaxAge: maxAge,
-		Path:   "/",
-	}
-
 	if authType == LOGIN {
-		generatedToken := j.GenerateToken(useid)
-		session.Values["authenticated"] = true
-		session.Values["token"] = generatedToken
+		if session.IsNew {
+			session.Options = &sessions.Options{
+				HttpOnly: true,
+				// Secure:   true,
+				MaxAge: maxAge,
+				Path:   "/",
+			}
+			generatedToken := j.GenerateToken(useid)
+			session.Values["authenticated"] = true
+			session.Values["token"] = generatedToken
+
+			err = sessions.Save(r, w)
+		}
 	} else {
 		if session.Values["authenticated"] == false {
 			return fmt.Errorf("already signed out")
 		}
 		session.Values["authenticated"] = false
 		session.Values["token"] = ""
+		session.Options.MaxAge = maxAge
+
+		err = sessions.Save(r, w)
 	}
 
-	err = sessions.Save(r, w)
 	if err != nil {
 		return err
 	}
