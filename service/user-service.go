@@ -16,6 +16,7 @@ type UserService interface {
 	Validate(user *entity.User) error
 	Update(user *entity.User) (*entity.User, error)
 	Profile(id string) (*entity.User, error)
+	GetAll() ([]entity.User, error)
 	Delete(id string) (int64, error)
 }
 
@@ -45,6 +46,10 @@ func (*userService) Update(user *entity.User) (*entity.User, error) {
 
 func (*userService) Profile(id string) (*entity.User, error) {
 	return userRepo.Profile(id)
+}
+
+func (*userService) GetAll() ([]entity.User, error) {
+	return userRepo.FindAll()
 }
 
 func (*userService) Delete(id string) (int64, error) {

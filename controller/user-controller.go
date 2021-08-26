@@ -21,6 +21,7 @@ type userController struct {
 type UserController interface {
 	Update(w http.ResponseWriter, r *http.Request)
 	Profile(w http.ResponseWriter, r *http.Request)
+	GetAllUsers(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
 }
 
@@ -106,6 +107,39 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if token == nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		_ = claims["user_id"].(string)
+
+		users, err := c.userService.GetAll()
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		res := helper.BuildResponse(true, "OK", users)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	response := helper.BuildErrorResponse("Failed to process request", "User not found", helper.EmptyObj{})
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(response)
+}
+
 // Delete -
 func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -129,7 +163,7 @@ func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if 0 == deleteCount {
+	if deleteCount == 0 {
 		response := helper.BuildResponse(true, "User not found", helper.EmptyObj{})
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(response)
