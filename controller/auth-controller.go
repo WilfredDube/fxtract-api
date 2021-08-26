@@ -100,7 +100,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	user.Password = string(hash)
 	user.CreatedAt = time.Now().Unix()
 	if user.UserRole == 0 {
-	user.UserRole = entity.GENERAL_USER
+		user.UserRole = entity.GENERAL_USER
 	}
 
 	_, err = c.authService.CreateUser(*user)
@@ -138,7 +138,7 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = c.jwtService.SetAuthentication(authResult.ID.Hex(), "fxtract", 86400*7, service.LOGIN, w, r)
+	err = c.jwtService.SetAuthentication(&authResult, "fxtract", 86400*7, service.LOGIN, w, r)
 	if err != nil {
 		response := helper.BuildErrorResponse("Please check again your credential", "Invalid Credential", helper.EmptyObj{})
 		w.WriteHeader(http.StatusUnauthorized)
@@ -155,7 +155,7 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 func (c *authController) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	err := c.jwtService.SetAuthentication("", "fxtract", -1, service.LOGOUT, w, r)
+	err := c.jwtService.SetAuthentication(&entity.User{}, "fxtract", -1, service.LOGOUT, w, r)
 	if err != nil {
 		response := helper.BuildErrorResponse("Already logged off", "Invalid procedure", helper.EmptyObj{})
 		w.WriteHeader(http.StatusUnauthorized)
