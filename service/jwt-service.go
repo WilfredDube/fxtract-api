@@ -27,6 +27,7 @@ type JWTService interface {
 	ValidateToken(token string) (*jwt.Token, error)
 	SetAuthentication(user *entity.User, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
 	GetAuthenticationToken(r *http.Request, cookieName string) (*jwt.Token, error)
+	GetUser(r *http.Request, cookieName string) (*entity.User, error)
 }
 type jwtCustomClaim struct {
 	UserID    string `json:"user_id"`
@@ -148,7 +149,20 @@ func (j *jwtService) GetAuthenticationToken(r *http.Request, cookieName string) 
 
 	return token, nil
 }
+
+func (j *jwtService) GetUser(r *http.Request, cookieName string) (*entity.User, error) {
+	session, err := j.store.Get(r, cookieName)
+	if err != nil {
+		return nil, err
 	}
 
-	return token
+	// Check if user is authenticated
+	if auth, ok := session.Values["user"].(bool); !ok || !auth {
+		fmt.Print(ok)
+		return nil, err
+	}
+
+	user := session.Values["user"].(*entity.User)
+
+	return user, nil
 }
