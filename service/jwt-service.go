@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/sessions"
 )
@@ -21,13 +23,14 @@ const (
 
 //JWTService is a contract of what jwtService can do
 type JWTService interface {
-	GenerateToken(userID string) string
+	GenerateToken(userID string, CreatedAt string) string
 	ValidateToken(token string) (*jwt.Token, error)
-	SetAuthentication(userID string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
+	SetAuthentication(user *entity.User, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error
 	GetAuthenticationToken(r *http.Request, cookieName string) *jwt.Token
 }
 type jwtCustomClaim struct {
-	UserID string `json:"user_id"`
+	UserID    string `json:"user_id"`
+	CreatedAt string `json:"created_at"`
 	jwt.StandardClaims
 }
 
@@ -54,9 +57,10 @@ func getSecretKey() string {
 	return secretKey
 }
 
-func (j *jwtService) GenerateToken(UserID string) string {
+func (j *jwtService) GenerateToken(UserID string, CreatedAt string) string {
 	claims := &jwtCustomClaim{
 		UserID,
+		CreatedAt,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().AddDate(1, 0, 0).Unix(),
 			Issuer:    j.issuer,
@@ -80,7 +84,7 @@ func (j *jwtService) ValidateToken(token string) (*jwt.Token, error) {
 	})
 }
 
-func (j *jwtService) SetAuthentication(useid string, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error {
+func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error {
 	session, err := j.store.Get(r, cookieName)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -95,7 +99,10 @@ func (j *jwtService) SetAuthentication(useid string, cookieName string, maxAge i
 				MaxAge: maxAge,
 				Path:   "/",
 			}
-			generatedToken := j.GenerateToken(useid)
+
+			time := strconv.FormatInt(user.CreatedAt, 10)
+
+			generatedToken := j.GenerateToken(user.ID.Hex(), time)
 			session.Values["authenticated"] = true
 			session.Values["token"] = generatedToken
 
