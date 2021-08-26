@@ -95,6 +95,7 @@ func main() {
 	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
 	r.HandleFunc("/api/auth/login", authController.Login).Methods("POST")
+	r.HandleFunc("/api/auth/logout", authController.Logout).Methods("POST")
 
 	// User account update and profile
 	r.HandleFunc("/api/user", userController.Update).Methods("POST")
