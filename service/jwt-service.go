@@ -6,6 +6,14 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+
+// DBTYPE -
+type AUTHTYPE string
+
+// Const -
+const (
+	LOGIN  AUTHTYPE = "login"
+	LOGOUT AUTHTYPE = "logout"
 )
 
 //JWTService is a contract of what jwtService can do
