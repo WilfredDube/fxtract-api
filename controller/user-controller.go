@@ -2,14 +2,17 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/helper"
+	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -18,6 +21,7 @@ import (
 type userController struct {
 	userService service.UserService
 	jwtService  service.JWTService
+	cache       *redis.Client
 }
 
 // UserController -
@@ -30,10 +34,11 @@ type UserController interface {
 }
 
 // NewUserController -
-func NewUserController(service service.UserService, jwtService service.JWTService) UserController {
+func NewUserController(service service.UserService, jwtService service.JWTService, cache *redis.Client) UserController {
 	return &userController{
 		userService: service,
 		jwtService:  jwtService,
+		cache:       cache,
 	}
 }
 
@@ -59,7 +64,8 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		uid, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
+		userID := claims["user_id"].(string)
+		uid, _ := primitive.ObjectIDFromHex(userID)
 
 		user.ID = uid
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -92,6 +98,8 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 
 		userData := NewLoginResponse(u)
 
+		go persistence.ClearCache(userID)
+
 		response := helper.BuildResponse(true, "OK", userData)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
@@ -114,7 +122,9 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
+
 		params := mux.Vars(r)
 		op := r.FormValue("operation")
 
@@ -130,7 +140,7 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 
 		if op == "promote" {
 			user.UserRole = entity.ADMIN
-		} else {
+		} else if op == "demote" {
 			user.UserRole = entity.GENERAL_USER
 		}
 
@@ -143,6 +153,8 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		}
 
 		userData := NewLoginResponse(u)
+
+		go persistence.ClearCache("allusers")
 
 		response := helper.BuildResponse(true, "OK", userData)
 		w.WriteHeader(http.StatusOK)
@@ -170,12 +182,34 @@ func (c *userController) Profile(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
 
-		user, err := c.userService.Profile(id)
+		result, err := c.cache.Get(id).Result()
+
+		var user *entity.User
 		if err != nil {
-			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
+			user, err = c.userService.Profile(id)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			bytes, err := json.Marshal(user)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(id, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &user)
 		}
 
 		userData := NewLoginResponse(user)
@@ -205,15 +239,50 @@ func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		_ = claims["user_id"].(string)
 
-		users, err := c.userService.GetAll()
+		cachedUsers, err := c.cache.Get("allusers").Result()
+
+		var users []entity.User
 		if err != nil {
-			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
+			users, err = c.userService.GetAll()
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			bytes, err := json.Marshal(users)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set("allusers", bytes, 30*time.Second).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(cachedUsers), &users)
 		}
 
-		res := helper.BuildResponse(true, "OK", users)
+		var searchedUsers []entity.User
+
+		if query := r.FormValue("q"); query != "" {
+			query = strings.ToLower(query)
+			for _, user := range users {
+				if strings.Contains(strings.ToLower(user.Firstname), query) || strings.Contains(strings.ToLower(user.Lastname), query) {
+					searchedUsers = append(searchedUsers, user)
+				}
+			}
+		} else {
+			searchedUsers = users
+		}
+
+		res := helper.BuildResponse(true, "OK", searchedUsers)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return
