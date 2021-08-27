@@ -33,11 +33,13 @@ func main() {
 	config, _ := configuration.ExtractConfiguration(*configPath)
 	repo := persistence.NewPersistenceLayer(config)
 
+	cache := persistence.SetUpRedis()
+
 	JWTService := service.NewJWTService(store)
 
 	userRepo := repository.NewUserRepository(*repo)
 	userService := service.NewUserService(userRepo)
-	userController := controller.NewUserController(userService, JWTService)
+	userController := controller.NewUserController(userService, JWTService, cache)
 
 	authService := service.NewAuthService(userRepo)
 	authController := controller.NewAuthController(authService, JWTService)
