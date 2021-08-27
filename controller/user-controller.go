@@ -118,7 +118,6 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		op := r.FormValue("operation")
 
-		fmt.Println(op)
 		uid := params["id"]
 
 		user, err := c.userService.Profile(uid)

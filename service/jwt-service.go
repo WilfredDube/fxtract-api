@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -88,7 +89,7 @@ func (j *jwtService) ValidateToken(token string) (*jwt.Token, error) {
 func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error {
 	session, err := j.store.Get(r, cookieName)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Panic(err.Error())
 		return err
 	}
 
@@ -137,7 +138,6 @@ func (j *jwtService) GetAuthenticationToken(r *http.Request, cookieName string) 
 
 	// Check if user is authenticated
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
-		fmt.Print(ok)
 		return nil, fmt.Errorf("token not found")
 	}
 
@@ -158,7 +158,6 @@ func (j *jwtService) GetUserRole(r *http.Request, cookieName string) (entity.Rol
 
 	// Check if user is authenticated
 	if _, ok := session.Values["user_role"].(int); !ok {
-		fmt.Print(ok)
 		return -1, err
 	}
 

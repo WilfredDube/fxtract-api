@@ -103,8 +103,6 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		project.ID = primitive.NewObjectID()
 		project.OwnerID = OwnerID
 		project.CreatedAt = time.Now().Unix()
-		fmt.Println(time.Now())
-		fmt.Println(time.Now().UnixNano())
 
 		response, err = c.projectService.Create(project)
 		if err != nil {
