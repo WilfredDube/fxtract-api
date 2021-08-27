@@ -96,17 +96,17 @@ func main() {
 	r.HandleFunc("/api/admin/users/{id}", middleware.CheckAdminRole(JWTService, userController.Promote)).Methods("PUT")
 
 	// Tool creation
-	r.HandleFunc("/api/admin/tools", toolController.AddTool).Methods("POST")
-	r.HandleFunc("/api/admin/tools", toolController.FindAll).Methods("GET")
-	r.HandleFunc("/api/admin/tools/{id}", toolController.FindByID).Methods("GET")
-	r.HandleFunc("/api/admin/tools/{id}", toolController.FindByAngle).Methods("GET")
-	r.HandleFunc("/api/admin/tools/{id}", toolController.Delete).Methods("DELETE")
+	r.HandleFunc("/api/admin/tools", middleware.CheckAdminRole(JWTService, toolController.AddTool)).Methods("POST")
+	r.HandleFunc("/api/admin/tools", middleware.CheckAdminRole(JWTService, toolController.FindAll)).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.FindByID)).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.FindByAngle)).Methods("GET")
+	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.Delete)).Methods("DELETE")
 
 	// Material creation
-	r.HandleFunc("/api/admin/materials", materialController.AddMaterial).Methods("POST")
-	r.HandleFunc("/api/admin/materials", materialController.FindAll).Methods("GET")
-	r.HandleFunc("/api/admin/materials/{id}", materialController.Find).Methods("GET")
-	r.HandleFunc("/api/admin/materials/{id}", materialController.Delete).Methods("DELETE")
+	r.HandleFunc("/api/admin/materials", middleware.CheckAdminRole(JWTService, materialController.AddMaterial)).Methods("POST")
+	r.HandleFunc("/api/admin/materials", middleware.CheckAdminRole(JWTService, materialController.FindAll)).Methods("GET")
+	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Find)).Methods("GET")
+	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Delete)).Methods("DELETE")
 
 	// files uploaded
 	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
