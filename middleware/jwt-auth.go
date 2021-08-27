@@ -40,7 +40,14 @@ func CheckAdminRole(JWTService service.JWTService, next http.HandlerFunc) http.H
 		w.Header().Set("Content-Type", "application/json")
 
 		userRole, err := JWTService.GetUserRole(r, "fxtract")
-		if (err != nil) || (userRole == -1) || userRole == entity.GENERAL_USER {
+		if userRole == -1 {
+			response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		if (err != nil) || userRole == entity.GENERAL_USER {
 			response := helper.BuildErrorResponse("Unauthorised", "User not admin", helper.EmptyObj{})
 			w.WriteHeader(http.StatusForbidden)
 			json.NewEncoder(w).Encode(response)
