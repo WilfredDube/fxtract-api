@@ -104,6 +104,7 @@ func (c *cadFileController) Upload(w http.ResponseWriter, r *http.Request) {
 	res := helper.BuildErrorResponse("Upload error", "File upload failed", helper.EmptyObj{})
 	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(res)
+	return
 }
 
 func (c *cadFileController) uploadHandler(r *http.Request, projectFolder string, id primitive.ObjectID) (*[]entity.CADFile, error) {
@@ -124,11 +125,11 @@ func (c *cadFileController) uploadHandler(r *http.Request, projectFolder string,
 	nFiles := len(files)
 
 	if (nFiles % 2) != 0 {
-		return nil, fmt.Errorf("each STEP/IGES file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("Each STEP/IGES file must be uploaded with its corresponding obj file")
 	}
 
 	if !helper.UploadBalanced(files) {
-		return nil, fmt.Errorf("unbalanced: Each STEP/IGES file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("Unbalanced: Each STEP/IGES file must be uploaded with its corresponding obj file")
 	}
 
 	for _, fileHeader := range files {
@@ -137,12 +138,12 @@ func (c *cadFileController) uploadHandler(r *http.Request, projectFolder string,
 		// a specified value, use the http.MaxBytesReader() method
 		// before calling ParseMultipartForm()
 		if fileHeader.Size > MaxUploadSize {
-			return nil, fmt.Errorf("the uploaded image is too big: %s. Please use an image less than 1MB in size", fileHeader.Filename)
+			return nil, fmt.Errorf("The uploaded image is too big: %s. Please use an image less than 1MB in size", fileHeader.Filename)
 		}
 
 		ext := filepath.Ext(fileHeader.Filename)
 		if ext != ".stp" && ext != ".step" && ext != ".obj" {
-			return nil, fmt.Errorf("the provided file format is not allowed. %s", ext)
+			return nil, fmt.Errorf("The provided file format is not allowed. %s", ext)
 		}
 
 		// Open the file
@@ -187,7 +188,7 @@ func (c *cadFileController) uploadHandler(r *http.Request, projectFolder string,
 		// insert cad file file metadata into database
 		var cadFile entity.CADFile
 
-		if !processed {
+		if processed == false {
 			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(f.Name()))
 
 			cadFile.ID = primitive.NewObjectID()
@@ -256,13 +257,6 @@ func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 
 	claims := token.Claims.(jwt.MapClaims)
 	uid, err := primitive.ObjectIDFromHex(claims["id"].(string))
-	if err != nil {
-		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
 	cadFile.ID = uid
 
 	u, err := c.cadFileService.Update(*cadFile)

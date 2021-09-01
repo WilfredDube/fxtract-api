@@ -126,8 +126,7 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 
 		params := mux.Vars(r)
 		op := r.FormValue("operation")
@@ -159,8 +158,6 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		userData := NewLoginResponse(u)
 
 		go persistence.ClearCache(ALLUSERS)
-
-		go persistence.ClearCache("allusers")
 
 		response := helper.BuildResponse(true, "OK", userData)
 		w.WriteHeader(http.StatusOK)
@@ -332,6 +329,7 @@ func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		go persistence.ClearCache(userID)
+		go persistence.ClearCache(ALLUSERS)
 
 		response := helper.BuildResponse(true, "User deletion successful", helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)
