@@ -21,7 +21,7 @@ type ToolRepository interface {
 	FindByAngle(angle int64) (*entity.Tool, error)
 
 	// Find all tools
-	FindAll(ownerID string) ([]entity.Tool, error)
+	FindAll() ([]entity.Tool, error)
 
 	// Delete a tool
 	Delete(id string) (int64, error)
@@ -106,7 +106,7 @@ func (r *toolRepoConnection) FindByAngle(angle int64) (*entity.Tool, error) {
 	return tool, nil
 }
 
-func (r *toolRepoConnection) FindAll(ownerID string) ([]entity.Tool, error) {
+func (r *toolRepoConnection) FindAll() ([]entity.Tool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 

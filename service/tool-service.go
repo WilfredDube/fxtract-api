@@ -17,7 +17,7 @@ type ToolService interface {
 	Create(tool *entity.Tool) (*entity.Tool, error)
 	Find(id string) (*entity.Tool, error)
 	FindByAngle(angle int64) (*entity.Tool, error)
-	FindAll(ownerID string) ([]entity.Tool, error)
+	FindAll() ([]entity.Tool, error)
 	Delete(id string) (int64, error)
 }
 
@@ -53,8 +53,8 @@ func (*toolService) FindByAngle(angle int64) (*entity.Tool, error) {
 	return toolRepo.FindByAngle(angle)
 }
 
-func (*toolService) FindAll(ownerID string) ([]entity.Tool, error) {
-	return toolRepo.FindAll(ownerID)
+func (*toolService) FindAll() ([]entity.Tool, error) {
+	return toolRepo.FindAll()
 }
 
 func (*toolService) Delete(id string) (int64, error) {
