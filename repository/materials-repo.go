@@ -19,7 +19,7 @@ type MaterialRepository interface {
 	Find(id string) (*entity.Material, error)
 
 	// Find all materials
-	FindAll(ownerID string) ([]entity.Material, error)
+	FindAll() ([]entity.Material, error)
 
 	// Delete a material
 	Delete(id string) (int64, error)
@@ -82,7 +82,7 @@ func (r *materialRepoConnection) Find(id string) (*entity.Material, error) {
 	return material, nil
 }
 
-func (r *materialRepoConnection) FindAll(ownerID string) ([]entity.Material, error) {
+func (r *materialRepoConnection) FindAll() ([]entity.Material, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 

@@ -7,15 +7,22 @@ import (
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/helper"
+	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+)
+
+const (
+	MATERIALCACHE = "tools"
 )
 
 type materialController struct {
 	userService     service.UserService
 	materialService service.MaterialService
 	jwtService      service.JWTService
+	cache           *redis.Client
 }
 
 // MaterialController -
@@ -27,11 +34,12 @@ type MaterialController interface {
 }
 
 // NewMaterialController -
-func NewMaterialController(service service.MaterialService, uService service.UserService, jwtService service.JWTService) MaterialController {
+func NewMaterialController(service service.MaterialService, uService service.UserService, jwtService service.JWTService, cache *redis.Client) MaterialController {
 	return &materialController{
 		userService:     uService,
 		materialService: service,
 		jwtService:      jwtService,
+		cache:           cache,
 	}
 }
 
@@ -48,16 +56,7 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 	}
 	var response *entity.Material
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		material := &entity.Material{}
 		err := json.NewDecoder(r.Body).Decode(material)
 		if err != nil {
@@ -67,7 +66,7 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		result, err := c.materialService.Find(material.Name)
+		result, _ := c.materialService.Find(material.Name)
 		if result != nil {
 			response := helper.BuildErrorResponse("Material already exist", "Duplicate request", helper.EmptyObj{})
 			w.WriteHeader(http.StatusBadRequest)
@@ -93,6 +92,8 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		go persistence.ClearCache(MATERIALCACHE)
+
 		res := helper.BuildResponse(true, "OK", response)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
@@ -116,25 +117,38 @@ func (c *materialController) Find(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		params := mux.Vars(r)
-		id = params["id"]
+		id := params["id"]
 
-		material, err := c.materialService.Find(id)
+		result, err := c.cache.Get(id).Result()
+
+		var material *entity.Material
 		if err != nil {
-			res := helper.BuildErrorResponse("Material not found", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+
+			material, err = c.materialService.Find(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Material not found", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+			bytes, err := json.Marshal(material)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(id, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &material)
 		}
 
 		res := helper.BuildResponse(true, "OK!", material)
@@ -160,15 +174,35 @@ func (c *materialController) FindAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		ownerID := claims["user_id"].(string)
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		result, err := c.cache.Get(TOOLCACHE).Result()
 
-		materials, err := c.materialService.FindAll(ownerID)
+		var materials []entity.Material
 		if err != nil {
-			res := helper.BuildErrorResponse("Material not found", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+
+			materials, err = c.materialService.FindAll()
+			if err != nil {
+				res := helper.BuildErrorResponse("Material not found", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+			bytes, err := json.Marshal(materials)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(TOOLCACHE, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &materials)
 		}
 
 		res := helper.BuildResponse(true, "OK", materials)
@@ -194,18 +228,9 @@ func (c *materialController) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		params := mux.Vars(r)
-		id = params["id"]
+		id := params["id"]
 
 		_, err := c.materialService.Find(id)
 		if err != nil {
@@ -229,6 +254,9 @@ func (c *materialController) Delete(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 			return
 		}
+
+		go persistence.ClearCache(id)
+		go persistence.ClearCache(MATERIALCACHE)
 
 		res := helper.BuildResponse(true, "OK", helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)

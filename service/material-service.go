@@ -16,7 +16,7 @@ type MaterialService interface {
 	Validate(material *entity.Material) error
 	Create(material *entity.Material) (*entity.Material, error)
 	Find(id string) (*entity.Material, error)
-	FindAll(ownerID string) ([]entity.Material, error)
+	FindAll() ([]entity.Material, error)
 	Delete(id string) (int64, error)
 }
 
@@ -30,11 +30,11 @@ func NewMaterialService(dbRepository repository.MaterialRepository) MaterialServ
 
 func (*materialService) Validate(material *entity.Material) error {
 	if material == nil {
-		return errors.New("Material is empty")
+		return errors.New("material is empty")
 	}
 
 	if material.Name == "" || material.TensileStrength == 0 || material.KFactor == 0 {
-		return errors.New("Fill in all the fields")
+		return errors.New("fill in all the fields")
 	}
 
 	return nil
@@ -48,8 +48,8 @@ func (*materialService) Find(id string) (*entity.Material, error) {
 	return materialRepo.Find(id)
 }
 
-func (*materialService) FindAll(ownerID string) ([]entity.Material, error) {
-	return materialRepo.FindAll(ownerID)
+func (*materialService) FindAll() ([]entity.Material, error) {
+	return materialRepo.FindAll()
 }
 
 func (*materialService) Delete(id string) (int64, error) {
