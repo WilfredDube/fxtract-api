@@ -18,6 +18,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	ALLUSERS = "allusers"
+)
+
 type userController struct {
 	userService service.UserService
 	jwtService  service.JWTService
@@ -154,6 +158,8 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 
 		userData := NewLoginResponse(u)
 
+		go persistence.ClearCache(ALLUSERS)
+
 		go persistence.ClearCache("allusers")
 
 		response := helper.BuildResponse(true, "OK", userData)
@@ -239,7 +245,7 @@ func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		_ = claims["user_id"].(string)
 
-		cachedUsers, err := c.cache.Get("allusers").Result()
+		cachedUsers, err := c.cache.Get(ALLUSERS).Result()
 
 		var users []entity.User
 		if err != nil {
@@ -259,7 +265,7 @@ func (c *userController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if err := c.cache.Set("allusers", bytes, 30*time.Second).Err(); err != nil {
+			if err := c.cache.Set(ALLUSERS, bytes, 30*time.Second).Err(); err != nil {
 				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(response)
@@ -306,7 +312,7 @@ func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		_ = claims["user_id"].(string)
+		userID := claims["user_id"].(string)
 		params := mux.Vars(r)
 		id := params["id"]
 
@@ -324,6 +330,8 @@ func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 			return
 		}
+
+		go persistence.ClearCache(userID)
 
 		response := helper.BuildResponse(true, "User deletion successful", helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)
