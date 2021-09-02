@@ -12,6 +12,16 @@ const (
 	UploadFolder = "uploads/"
 )
 
+const (
+	Debug = 1
+)
+
+func DPrintf(format string, v ...interface{}) {
+	if Debug > 0 {
+		log.Printf(format, v...)
+	}
+}
+
 // CreateFolder -
 func CreateFolder(dir string, isMainFolder bool) {
 	dir = UploadFolder + dir

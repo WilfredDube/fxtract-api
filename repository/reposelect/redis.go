@@ -3,6 +3,7 @@ package repository
 import (
 	"log"
 
+	"github.com/WilfredDube/fxtract-backend/helper"
 	"github.com/go-redis/redis"
 )
 
@@ -27,14 +28,12 @@ func setUpCacheChannel() {
 		for {
 			if err := cache.Del(<-ch).Err(); err != nil {
 				log.Panic("Failed to clear cache")
-			} else {
-				log.Println("Cache cleared")
 			}
 		}
 	}(cacheChannel)
 }
 
 func ClearCache(key string) {
-	log.Println("Clearing cache.............")
+	helper.DPrintf("Clearing cache: %s", key)
 	cacheChannel <- key
 }
