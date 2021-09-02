@@ -248,7 +248,7 @@ func (c *materialController) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if 0 == deleteCount {
+		if deleteCount == 0 {
 			response := helper.BuildErrorResponse("Failed to process request", "Material not found", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(response)

@@ -61,6 +61,13 @@ func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 
 	claims := token.Claims.(jwt.MapClaims)
 	uid, err := primitive.ObjectIDFromHex(claims["id"].(string))
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	cadFile.ID = uid
 
 	u, err := c.cadFileService.Update(*cadFile)
