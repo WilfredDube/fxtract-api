@@ -12,10 +12,17 @@ import (
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/helper"
+	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+const (
+	PROJECTCACHE = "projects"
+	CADFILECACHE = "cadfiles"
 )
 
 type controller struct {
@@ -24,6 +31,7 @@ type controller struct {
 	cadFileService        service.CadFileService
 	projectService        service.ProjectService
 	processingPlanService service.ProcessingPlanService
+	cache                 *redis.Client
 }
 
 // ProjectController -
@@ -40,13 +48,14 @@ type ProjectController interface {
 }
 
 // NewProjectController -
-func NewProjectController(service service.ProjectService, uService service.UserService, cService service.CadFileService, pPlanService service.ProcessingPlanService, jwtService service.JWTService) ProjectController {
+func NewProjectController(service service.ProjectService, uService service.UserService, cService service.CadFileService, pPlanService service.ProcessingPlanService, jwtService service.JWTService, cache *redis.Client) ProjectController {
 	return &controller{
 		userService:           uService,
 		cadFileService:        cService,
 		projectService:        service,
 		processingPlanService: pPlanService,
 		jwtService:            jwtService,
+		cache:                 cache,
 	}
 }
 
@@ -85,7 +94,7 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		result := c.projectService.IsDuplicate(project.Title, OwnerID)
-		if result == true {
+		if result {
 			response := helper.BuildErrorResponse("Project already exist", "Duplicate request", helper.EmptyObj{})
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
@@ -115,6 +124,10 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		projectFolder := response.OwnerID.Hex() + "/" + response.ID.Hex()
 		helper.CreateFolder(projectFolder, false)
 
+		PROJECTOWNERID := PROJECTCACHE + OwnerID.String()
+		go persistence.ClearCache(project.ID.String())
+		go persistence.ClearCache(PROJECTOWNERID)
+
 		// res := helper.BuildResponse(true, "OK", response)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
@@ -138,30 +151,43 @@ func (c *controller) FindByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		params := mux.Vars(r)
-		id = params["id"]
+		id := params["id"]
 
-		project, err := c.projectService.Find(id)
+		result, err := c.cache.Get(id).Result()
+
+		var project *entity.Project
 		if err != nil {
-			res := helper.BuildErrorResponse("Project not found", "Unknown project id", helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+			project, err = c.projectService.Find(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Project not found", "Unknown project id", helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			bytes, err := json.Marshal(project)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(id, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &project)
 		}
 
-		// res := helper.BuildResponse(true, "OK!", project)
+		res := helper.BuildResponse(true, "OK!", project)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(project)
+		json.NewEncoder(w).Encode(res)
 		return
 	}
 
@@ -185,17 +211,43 @@ func (c *controller) FindAll(w http.ResponseWriter, r *http.Request) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		ownerID := claims["user_id"].(string)
 
-		projects, err := c.projectService.FindAll(ownerID)
+		PROJECTOWNERID := PROJECTCACHE + ownerID
+
+		result, err := c.cache.Get(PROJECTOWNERID).Result()
+
+		var projects []entity.Project
 		if err != nil {
-			res := helper.BuildErrorResponse("Project not found", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+			projects, err = c.projectService.FindAll(ownerID)
+			if err != nil {
+				res := helper.BuildErrorResponse("Project not found", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			bytes, err := json.Marshal(projects)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if len(projects) > 0 {
+				if err := c.cache.Set(PROJECTOWNERID, bytes, 30*time.Minute).Err(); err != nil {
+					response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(response)
+					return
+				}
+			}
+		} else {
+			json.Unmarshal([]byte(result), &projects)
 		}
 
-		// res := helper.BuildResponse(true, "OK", projects)
+		res := helper.BuildResponse(true, "OK", projects)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(projects)
+		json.NewEncoder(w).Encode(res)
 		return
 	}
 
@@ -217,17 +269,10 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
+		OwnerID := claims["user_id"].(string)
 
 		params := mux.Vars(r)
-		id = params["id"]
+		id := params["id"]
 
 		project, err := c.projectService.Find(id)
 		if err != nil {
@@ -253,10 +298,17 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// TODO: delete project folder
-		projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
-		helper.DeleteFolder(projectFolder)
+		// projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
+		// helper.DeleteFolder(projectFolder)
 
 		c.cadFileService.CascadeDelete(project.ID.Hex())
+
+		PROJECTOWNERID := PROJECTCACHE + OwnerID
+		go persistence.ClearCache(id)
+		go persistence.ClearCache(PROJECTOWNERID)
+
+		PROJECTCADFILES := CADFILECACHE + OwnerID
+		go persistence.ClearCache(PROJECTCADFILES)
 
 		res := helper.BuildResponse(true, "OK", helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)
@@ -285,7 +337,7 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 		ownerID, _ := primitive.ObjectIDFromHex(claims["user_id"].(string))
 
 		params := mux.Vars(r)
-		id, err := primitive.ObjectIDFromHex(params["id"])
+		id, _ := primitive.ObjectIDFromHex(params["id"])
 
 		project, err := c.projectService.Find(params["id"])
 		if err != nil {
@@ -322,7 +374,6 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 	res := helper.BuildErrorResponse("Upload error", "File upload failed", helper.EmptyObj{})
 	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(res)
-	return
 }
 
 func (c *controller) uploadHandler(r *http.Request, projectFolder string, id primitive.ObjectID) (*[]entity.CADFile, error) {
@@ -343,15 +394,15 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 	nFiles := len(files)
 
 	if nFiles == 0 {
-		return nil, fmt.Errorf("Select a file(s) to upload")
+		return nil, fmt.Errorf("select a file(s) to upload")
 	}
 
 	if (nFiles % 2) != 0 {
-		return nil, fmt.Errorf("Each STEP file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("each STEP file must be uploaded with its corresponding obj file")
 	}
 
 	if !helper.UploadBalanced(files) {
-		return nil, fmt.Errorf("Unbalanced: Each STEP file must be uploaded with its corresponding obj file")
+		return nil, fmt.Errorf("unbalanced: Each STEP file must be uploaded with its corresponding obj file")
 	}
 
 	for _, fileHeader := range files {
@@ -360,12 +411,12 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		// a specified value, use the http.MaxBytesReader() method
 		// before calling ParseMultipartForm()
 		if fileHeader.Size > MaxUploadSize {
-			return nil, fmt.Errorf("The uploaded image is too big: %s. Please use an image less than 1MB in size", fileHeader.Filename)
+			return nil, fmt.Errorf("the uploaded image is too big: %s. Please use an image less than 1MB in size", fileHeader.Filename)
 		}
 
 		ext := filepath.Ext(fileHeader.Filename)
 		if ext != ".stp" && ext != ".step" && ext != ".obj" {
-			return nil, fmt.Errorf("The provided file format is not allowed. %s", ext)
+			return nil, fmt.Errorf("the provided file format is not allowed. %s", ext)
 		}
 
 		// Open the file
@@ -410,7 +461,7 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		// insert cad file file metadata into database
 		var cadFile entity.CADFile
 
-		if processed == false {
+		if !processed {
 			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(f.Name()))
 
 			cadFile.ID = primitive.NewObjectID()
@@ -468,16 +519,37 @@ func (c *controller) FindCADFileByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-
 		params := mux.Vars(r)
 		id := params["id"]
 
-		cadFile, err := c.cadFileService.Find(id)
+		result, err := c.cache.Get(id).Result()
+
+		var cadFile *entity.CADFile
 		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+			cadFile, err := c.cadFileService.Find(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			bytes, err := json.Marshal(cadFile)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(id, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &cadFile)
 		}
 
 		res := helper.BuildResponse(true, "OK!", cadFile)
@@ -505,27 +577,51 @@ func (c *controller) FindAllCADFiles(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		projectID := params["id"]
 
-		project, err := c.projectService.Find(projectID)
-		if err != nil {
-			res := helper.BuildErrorResponse("Project error", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
+		PROJECTCADFILES := CADFILECACHE + projectID
 
-		if project.OwnerID != ownerID {
-			res := helper.BuildErrorResponse("Project owner does not exist", "Token error", helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
+		result, err := c.cache.Get(PROJECTCADFILES).Result()
 
-		cadFiles, err := c.cadFileService.FindAll(projectID)
+		var cadFiles []entity.CADFile
 		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
+			project, err := c.projectService.Find(projectID)
+			if err != nil {
+				res := helper.BuildErrorResponse("Project error", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			if project.OwnerID != ownerID {
+				res := helper.BuildErrorResponse("Project owner does not exist", "Token error", helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			cadFiles, err = c.cadFileService.FindAll(projectID)
+			if err != nil {
+				res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			bytes, err := json.Marshal(cadFiles)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(PROJECTCADFILES, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &cadFiles)
 		}
 
 		res := helper.BuildResponse(true, "OK!", cadFiles)
@@ -559,7 +655,7 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		deleteCount, err := c.processingPlanService.Delete(id)
+		_, err = c.processingPlanService.Delete(id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
@@ -567,7 +663,7 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		deleteCount, err = c.cadFileService.Delete(id)
+		deleteCount, err := c.cadFileService.Delete(id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
@@ -575,7 +671,7 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if 0 == deleteCount {
+		if deleteCount == 0 {
 			res := helper.BuildErrorResponse("File not found: ", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(res)
@@ -584,6 +680,10 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 
 		helper.DeleteFile(cadFile.StepURL)
 		helper.DeleteFile(cadFile.ObjpURL)
+
+		PROJECTCADFILES := CADFILECACHE + cadFile.ProjectID.String()
+		go persistence.ClearCache(id)
+		go persistence.ClearCache(PROJECTCADFILES)
 
 		res := helper.BuildResponse(true, "OK!", deleteCount)
 		w.WriteHeader(http.StatusOK)
