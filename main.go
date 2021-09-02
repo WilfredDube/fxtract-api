@@ -52,22 +52,23 @@ func main() {
 
 	projectRepo := repository.NewProjectRepository(*repo)
 	projectService := service.NewProjectService(projectRepo)
-	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService)
+	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService, cache)
 
 	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
-	toolController := controller.NewToolController(toolService, userService, JWTService)
+	toolController := controller.NewToolController(toolService, userService, JWTService, cache)
 
 	materialRepo := repository.NewMaterialRepository(*repo)
 	materialService := service.NewMaterialService(materialRepo)
+	materialController := controller.NewMaterialController(materialService, userService, JWTService, cache)
 
 	taskRepo := repository.NewTaskRepository(*repo)
 	taskService := service.NewTaskService(taskRepo)
 	taskController := controller.NewTaskController(taskService, JWTService, cache)
 
-	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService)
+	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, cache)
 
 	r := mux.NewRouter()
 
@@ -84,6 +85,7 @@ func main() {
 	// Feature recognition / processing plan API based on the CAD file's process level
 	r.HandleFunc("/api/user/projects/{pid}/files/{id}", freController.ProcessCADFile).Methods("POST").Queries("operation", "{process}")
 	r.HandleFunc("/api/user/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
+	r.HandleFunc("/api/user/process/{id}", projectController.FindProcessPlan).Methods("GET")
 
 	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
@@ -104,7 +106,7 @@ func main() {
 	r.HandleFunc("/api/admin/tools", middleware.CheckAdminRole(JWTService, toolController.AddTool)).Methods("POST")
 	r.HandleFunc("/api/admin/tools", middleware.CheckAdminRole(JWTService, toolController.FindAll)).Methods("GET")
 	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.FindByID)).Methods("GET")
-	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.FindByAngle)).Methods("GET")
+	r.HandleFunc("/api/admin/tools/angle/{angle}", middleware.CheckAdminRole(JWTService, toolController.FindByAngle)).Methods("GET")
 	r.HandleFunc("/api/admin/tools/{id}", middleware.CheckAdminRole(JWTService, toolController.Delete)).Methods("DELETE")
 
 	// Material creation
