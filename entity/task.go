@@ -3,11 +3,11 @@ package entity
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // ProcessingPlan -
-type Process struct {
-	ID                         primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
+type Task struct {
+	TaskID                     primitive.ObjectID   `json:"task_id,omitempty" bson:"task_id,omitempty"`
 	UserID                     primitive.ObjectID   `json:"user_id,omitempty" bson:"user_id,omitempty"`
 	CADFiles                   []primitive.ObjectID `json:"cadfiles" bson:"cadfiles,omitempty" validate:"empty=false"`
-	ProcessType                ProcessType          `json:"process_type" bson:"process_type" validate:"empty=false"`
+	ProcessType                []ProcessType        `json:"process_type" bson:"process_type" validate:"empty=false"`
 	Status                     Status               `json:"status" bson:"status" validate:"empty=false"`
 	Quantity                   int64                `json:"quantity" bson:"quantity" validate:"empty=false"`
 	ProcessingTime             float64              `json:"processing_time" bson:"processing_time" validate:"empty=false"`
@@ -20,8 +20,8 @@ type ProcessType string
 type Status string
 
 const (
-	FRE         ProcessType = "Feature recognition"
-	PP          ProcessType = "Process planning"
-	Complete    Status      = "Complete"
-	Pprocessing Status      = "Processing"
+	FeatureRecognition ProcessType = "Feature recognition"
+	ProcessPlanning    ProcessType = "Process planning"
+	Complete           Status      = "Complete"
+	Processing         Status      = "Processing"
 )

@@ -62,7 +62,10 @@ func main() {
 
 	materialRepo := repository.NewMaterialRepository(*repo)
 	materialService := service.NewMaterialService(materialRepo)
-	materialController := controller.NewMaterialController(materialService, userService, JWTService)
+
+	taskRepo := repository.NewTaskRepository(*repo)
+	taskService := service.NewTaskService(taskRepo)
+	taskController := controller.NewTaskController(taskService, JWTService, cache)
 
 	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService)
 
@@ -110,8 +113,12 @@ func main() {
 	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Find)).Methods("GET")
 	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Delete)).Methods("DELETE")
 
-	// files uploaded
+	// Files uploaded
 	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
+
+	// Tasks
+	r.HandleFunc("/api/admin/task", middleware.CheckAdminRole(JWTService, taskController.FindAll)).Methods("GET")
+	r.HandleFunc("/api/admin/task/{id}", middleware.CheckAdminRole(JWTService, taskController.Find)).Methods("GET")
 
 	// processes: type, status
 
