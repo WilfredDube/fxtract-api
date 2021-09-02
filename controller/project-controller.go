@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	PROJECTCACHE = "projects"
-	CADFILECACHE = "cadfiles"
+	CADFILECACHE     = "cadfiles"
+	PROJECTCACHE     = "projects"
+	PROCESSPLANCACHE = "processplan"
 )
 
 type controller struct {
@@ -40,6 +41,7 @@ type ProjectController interface {
 	Upload(w http.ResponseWriter, r *http.Request)
 	uploadHandler(r *http.Request, projectFolder string, id primitive.ObjectID) (*[]entity.CADFile, error)
 	FindByID(w http.ResponseWriter, r *http.Request)
+	FindProcessPlan(w http.ResponseWriter, r *http.Request)
 	FindCADFileByID(w http.ResponseWriter, r *http.Request)
 	FindAll(w http.ResponseWriter, r *http.Request)
 	FindAllCADFiles(w http.ResponseWriter, r *http.Request)
@@ -689,5 +691,57 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return
+	}
+}
+
+func (c *controller) FindProcessPlan(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		params := mux.Vars(r)
+		id := params["id"]
+
+		PROCESSPLAN := PROCESSPLANCACHE + id
+		result, err := c.cache.Get(PROCESSPLAN).Result()
+
+		var processPlan *entity.ProcessingPlan
+		if err != nil {
+			processPlan, err = c.processingPlanService.Find(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Processing plan notr found", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			bytes, err := json.Marshal(processPlan)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+
+			if err := c.cache.Set(PROCESSPLAN, bytes, 30*time.Minute).Err(); err != nil {
+				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(response)
+				return
+			}
+		} else {
+			json.Unmarshal([]byte(result), &processPlan)
+		}
+
+		res := helper.BuildResponse(true, "OK!", processPlan)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
 	}
 }
