@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"

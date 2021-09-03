@@ -3,7 +3,7 @@ package repository
 import (
 	"log"
 
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/go-redis/redis"
 )
 

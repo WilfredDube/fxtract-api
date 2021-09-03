@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"

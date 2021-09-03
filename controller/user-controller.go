@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
