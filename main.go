@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +11,8 @@ import (
 
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/controller"
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
+	msgqueue_amqp "github.com/WilfredDube/fxtract-backend/lib/msgqueue/amqp"
 	"github.com/WilfredDube/fxtract-backend/middleware"
 	"github.com/WilfredDube/fxtract-backend/repository"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
@@ -18,6 +20,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/streadway/amqp"
 )
 
 var (
@@ -32,6 +35,18 @@ func main() {
 
 	config, _ := configuration.ExtractConfiguration(*configPath)
 	repo := persistence.NewPersistenceLayer(config)
+
+	conn, err := amqp.Dial(config.AMQPMessageBroker)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	eventEmitter, err := msgqueue_amqp.NewAMQPEventEmitter(conn, "processes")
+	if err != nil {
+		panic(err)
+	}
+
+	log.Println("Event emitter created")
 
 	cache := persistence.SetUpRedis()
 
@@ -68,7 +83,7 @@ func main() {
 	taskService := service.NewTaskService(taskRepo)
 	taskController := controller.NewTaskController(taskService, JWTService, cache)
 
-	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, cache)
+	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, cache, eventEmitter)
 
 	r := mux.NewRouter()
 
@@ -97,7 +112,6 @@ func main() {
 	r.HandleFunc("/api/user/profile", userController.Profile).Methods("GET")
 
 	/* ---------------- Admin endpoints ------------------*/
-
 	r.HandleFunc("/api/admin/users", middleware.CheckAdminRole(JWTService, userController.GetAllUsers)).Methods("GET")
 	r.HandleFunc("/api/admin/users", middleware.CheckAdminRole(JWTService, authController.Register)).Methods("POST")
 	r.HandleFunc("/api/admin/users/{id}", middleware.CheckAdminRole(JWTService, userController.Promote)).Methods("PUT")
@@ -141,14 +155,14 @@ func main() {
 		errs <- fmt.Errorf("%s", <-c)
 	}()
 
-	notificationService := notification.NewMQResponseController(config, cadFileService, processingPlanService, userService, JWTService)
-	go func() {
-		notificationService.FeatureRecognitionNotifications("FRECRESPONSE")
-	}()
+	// notificationService := notification.NewMQResponseController(config, cadFileService, processingPlanService, userService, JWTService)
+	// go func() {
+	// 	notificationService.FeatureRecognitionNotifications("FRECRESPONSE")
+	// }()
 
-	go func() {
-		notificationService.ProcessingPlanNotifications("PPRESPONSE")
-	}()
+	// go func() {
+	// 	notificationService.ProcessingPlanNotifications("PPRESPONSE")
+	// }()
 
 	fmt.Printf("Terminated %s\n", <-errs)
 }
