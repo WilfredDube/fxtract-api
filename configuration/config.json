@@ -3,8 +3,8 @@
 	"database_connection":"mongodb://mongo",
 	"database_name":"fxtract_db",
 	"database_timeout":30,
-	"restful_endpoint":":8000",
-	
+	"restful_endpoint":":8000",	
+	"amqp_message_broker":"amqp://guest:guest@rabbitmq/",
 	"rabbit_host": "localhost", 
  	"rabbit_port": "5672"   ,  
  	"rabbit_user": "guest"  ,  
