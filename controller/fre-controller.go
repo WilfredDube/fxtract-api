@@ -9,13 +9,14 @@ import (
 
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/entity"
-	"github.com/WilfredDube/fxtract-backend/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/contracts"
+	"github.com/WilfredDube/fxtract-backend/lib/helper"
+	"github.com/WilfredDube/fxtract-backend/lib/msgqueue"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
-	"github.com/streadway/amqp"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -27,6 +28,7 @@ type freController struct {
 	config                configuration.ServiceConfig
 	taskService           service.TaskService
 	cache                 *redis.Client
+	eventEmitter          msgqueue.EventEmitter
 }
 
 // FREController -
@@ -39,7 +41,7 @@ type FREController interface {
 
 // NewFREController -
 func NewFREController(configuration configuration.ServiceConfig, cadService service.CadFileService, pPlanService service.ProcessingPlanService,
-	uService service.UserService, jwtService service.JWTService, taskService service.TaskService, cache *redis.Client) FREController {
+	uService service.UserService, jwtService service.JWTService, taskService service.TaskService, cache *redis.Client, eventEmitter msgqueue.EventEmitter) FREController {
 	return &freController{
 		userService:           uService,
 		cadFileService:        cadService,
@@ -48,122 +50,32 @@ func NewFREController(configuration configuration.ServiceConfig, cadService serv
 		config:                configuration,
 		taskService:           taskService,
 		cache:                 cache,
+		eventEmitter:          eventEmitter,
 	}
 }
 
 func (c *freController) ExtractBendFeatures(UserID string, cadFile *entity.CADFile) {
-	request := &entity.FRERequest{}
-
-	request.CADFileID = cadFile.ID.Hex()
-	request.UserID = UserID
-	request.URL = cadFile.StepURL
-
-	message, err := json.Marshal(request)
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to open a channel", err.Error())
+	request := &contracts.FeatureRecognitionStarted{
+		UserID:    UserID,
+		CADFileID: cadFile.ID.Hex(),
+		URL:       cadFile.StepURL,
 	}
 
-	log.Printf("*********************************************************************")
-	fmt.Println("Publisher received message: " + string(message))
-
-	conn, err := amqp.Dial("amqp://" + c.config.RabbitUser + ":" + c.config.RabbitPassword + "@" + c.config.RabbitHost + ":" + c.config.RabbitPort + "/")
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to open a channel", err)
-	}
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"FREC", // name
-		true,   // durable
-		false,  // delete when unused
-		false,  // exclusive
-		false,  // no-wait
-		nil,    // arguments
-	)
-
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to declare a queue", err)
-	}
-
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        message,
-		})
-
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to publish a message", err)
-	}
+	c.eventEmitter.Emit(request)
 
 	fmt.Println("Publish successful!")
 	log.Printf("*********************************************************************")
 }
 
 func (c *freController) GenerateProcessingPlan(UserID string, cadFile *entity.CADFile) {
-	request := &entity.PPRequest{}
-
-	request.CADFileID = cadFile.ID.Hex()
-	request.UserID = UserID
-	request.BendCount = int64(cadFile.FeatureProps.BendCount)
-	request.SerializedData = cadFile.FeatureProps.SerialData
-
-	message, err := json.Marshal(request)
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to open a channel", err.Error())
+	request := &contracts.ProcessPlanningStarted{
+		CADFileID:      cadFile.ID.Hex(),
+		UserID:         UserID,
+		BendCount:      int64(cadFile.FeatureProps.BendCount),
+		SerializedData: cadFile.FeatureProps.SerialData,
 	}
 
-	log.Printf("*********************************************************************")
-	fmt.Println("Publisher received message: " + string(message))
-
-	conn, err := amqp.Dial("amqp://" + c.config.RabbitUser + ":" + c.config.RabbitPassword + "@" + c.config.RabbitHost + ":" + c.config.RabbitPort + "/")
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
-	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to open a channel", err)
-	}
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"PPLAN", // name
-		true,    // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
-	)
-
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to declare a queue", err)
-	}
-
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        message,
-		})
-
-	if err != nil {
-		log.Fatalf("%s: %s", "Failed to publish a message", err)
-	}
-
+	c.eventEmitter.Emit(request)
 	fmt.Println("Publishing successful!")
 	log.Printf("*********************************************************************")
 }
@@ -215,24 +127,21 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 
 			task.Status = entity.Processing
 			task.Quantity = 1
-			task.CADFiles = append(task.CADFiles, cadFile.ID)
+			task.CADFiles = append(task.CADFiles, cadFile.FileName)
 			task.CreatedAt = time.Now().Unix()
 
+			var res helper.Response
 			if cadFile.FeatureProps.ProcessLevel == 0 {
-				res := helper.BuildResponse(true, "Feature recognition started", &helper.EmptyObj{})
+				res = helper.BuildResponse(true, "Feature recognition started", &helper.EmptyObj{})
 				c.ExtractBendFeatures(id, cadFile)
 				task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
-				json.NewEncoder(w).Encode(res)
-				return
 			} else if cadFile.FeatureProps.ProcessLevel == 1 {
-				res := helper.BuildResponse(true, "Process planning started", &helper.EmptyObj{})
+				res = helper.BuildResponse(true, "Process planning started", &helper.EmptyObj{})
 				c.GenerateProcessingPlan(id, cadFile)
 				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
-				json.NewEncoder(w).Encode(res)
-				return
 			}
 
-			response, err := c.taskService.Create(&task)
+			_, err := c.taskService.Create(&task)
 			if err != nil {
 				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 				w.WriteHeader(http.StatusInternalServerError)
@@ -242,56 +151,17 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 
 			go persistence.ClearCache(TASKCACHE)
 
-			bytes, err := json.Marshal(task)
-			if err != nil {
-				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(response)
-				return
-			}
-
-			if err := c.cache.Set(task.TaskID.String(), bytes, 30*time.Minute).Err(); err != nil {
-				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(response)
-				return
-			}
-
-			res := helper.BuildResponse(true, "OK", response)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
 
-		PROCESSPLAN := PROCESSPLANCACHE + cadFileID
-		result, err := c.cache.Get(PROCESSPLAN).Result()
-
-		var processingPlan *entity.ProcessingPlan
+		processingPlan, err := c.processingPlanService.Find(cadFileID)
 		if err != nil {
-			processingPlan, err = c.processingPlanService.Find(cadFileID)
-			if err != nil {
-				res := helper.BuildErrorResponse("Process failed", "Processing plan not found", helper.EmptyObj{})
-				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(res)
-				return
-			}
-
-			bytes, err := json.Marshal(processingPlan)
-			if err != nil {
-				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(response)
-				return
-			}
-
-			if err := c.cache.Set(PROCESSPLAN, bytes, 30*time.Minute).Err(); err != nil {
-				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(response)
-				return
-			}
-		} else {
-			json.Unmarshal([]byte(result), &processingPlan)
+			res := helper.BuildErrorResponse("Process failed", "Processing plan not found", helper.EmptyObj{})
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(res)
+			return
 		}
 
 		res := helper.BuildResponse(true, "CAD file has been fully processed", processingPlan)
@@ -365,7 +235,7 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 				ppNum++
 			}
 
-			task.CADFiles = append(task.CADFiles, cadFile.ID)
+			task.CADFiles = append(task.CADFiles, cadFile.FileName)
 		}
 
 		if ppNum > 0 || freNum > 0 {
@@ -373,7 +243,17 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		res := helper.BuildResponse(true, "Process planning complete: all files processed.", &helper.EmptyObj{})
+		_, err = c.taskService.Create(&task)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		go persistence.ClearCache(TASKCACHE)
+
+		res := helper.BuildResponse(true, "Process planning strted.", &helper.EmptyObj{})
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
 		return
