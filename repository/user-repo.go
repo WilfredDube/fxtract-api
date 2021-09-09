@@ -99,7 +99,7 @@ func (r *userRepoConnection) Update(user entity.User) (*entity.User, error) {
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "repository.User.Create")
+		return nil, errors.Wrap(err, "repository.User.Update")
 	}
 
 	return &user, nil
