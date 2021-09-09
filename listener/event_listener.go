@@ -16,6 +16,7 @@ type EventProcessor struct {
 	EventListener         msgqueue.EventListener
 	CadFileService        service.CadFileService
 	TaskService           service.TaskService
+	ToolService           service.ToolService
 	ProcessingPlanService service.ProcessingPlanService
 }
 
@@ -52,6 +53,15 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		cadFile.FeatureProps = e.FeatureProps
 		cadFile.BendFeatures = []entity.BendFeature{}
 		cadFile.BendFeatures = e.BendFeatures
+
+		for i, bend := range cadFile.BendFeatures {
+			tool, err := p.ToolService.FindByAngle(int64(bend.Angle))
+			if err != nil {
+				log.Fatalf("%s: %s", "Failed to retrieve tool data: ", err)
+			}
+
+			cadFile.BendFeatures[i].ToolID = tool.ToolID
+		}
 
 		_, err = p.CadFileService.Update(*cadFile)
 		if err != nil {

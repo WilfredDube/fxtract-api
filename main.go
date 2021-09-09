@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -52,7 +51,10 @@ func main() {
 		panic(err)
 	}
 
-	log.Println("Event emitter created")
+	processPlannerEventListener, err := msgqueue_amqp.NewAMQPEventListener(conn, "processes", "PROCESSPLANNINGCOMPLETE")
+	if err != nil {
+		panic(err)
+	}
 
 	cache := persistence.SetUpRedis()
 
@@ -162,7 +164,10 @@ func main() {
 	}()
 
 	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService,
+		TaskService: taskService, ProcessingPlanService: processingPlanService, ToolService: toolService}
 	go processor.ProcessEvents("featureRecognitionComplete")
+
+	processPlanner := listener.EventProcessor{EventListener: processPlannerEventListener, CadFileService: cadFileService,
 		TaskService: taskService, ProcessingPlanService: processingPlanService}
 	go processPlanner.ProcessEvents("processPlanningComplete")
 
