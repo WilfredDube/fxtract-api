@@ -12,7 +12,9 @@ var (
 // TaskService -
 type TaskService interface {
 	Create(task *entity.Task) (*entity.Task, error)
+	Update(task entity.Task) (*entity.Task, error)
 	Find(id string) (*entity.Task, error)
+	FindByUserID(id string) (*entity.Task, error)
 	FindAll() ([]entity.Task, error)
 }
 
@@ -28,8 +30,16 @@ func (*taskService) Create(task *entity.Task) (*entity.Task, error) {
 	return taskRepo.Create(task)
 }
 
+func (*taskService) Update(task entity.Task) (*entity.Task, error) {
+	return taskRepo.Update(task)
+}
+
 func (*taskService) Find(id string) (*entity.Task, error) {
 	return taskRepo.Find(id)
+}
+
+func (*taskService) FindByUserID(id string) (*entity.Task, error) {
+	return taskRepo.FindByUserID(id)
 }
 
 func (*taskService) FindAll() ([]entity.Task, error) {
