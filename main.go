@@ -161,7 +161,8 @@ func main() {
 		errs <- fmt.Errorf("%s", <-c)
 	}()
 
-	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService, TaskService: taskService}
+	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService,
+		TaskService: taskService, ProcessingPlanService: processingPlanService}
 	go processor.ProcessEvents()
 
 	fmt.Printf("Terminated %s\n", <-errs)
