@@ -19,10 +19,10 @@ type EventProcessor struct {
 	ProcessingPlanService service.ProcessingPlanService
 }
 
-func (p *EventProcessor) ProcessEvents() {
+func (p *EventProcessor) ProcessEvents(events ...string) {
 	log.Println("listening for events")
 
-	received, errors, err := p.EventListener.Listen("featureRecognitionComplete")
+	received, errors, err := p.EventListener.Listen(events...)
 
 	if err != nil {
 		panic(err)
