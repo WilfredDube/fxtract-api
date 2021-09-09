@@ -4,6 +4,7 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 
 // ProcessingPlan -
 type Task struct {
+	ID                         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	TaskID                     primitive.ObjectID `json:"task_id,omitempty" bson:"task_id,omitempty"`
 	UserID                     primitive.ObjectID `json:"user_id,omitempty" bson:"user_id,omitempty"`
 	CADFiles                   []string           `json:"cadfiles" bson:"cadfiles,omitempty" validate:"empty=false"`
