@@ -34,8 +34,8 @@ type freController struct {
 // FREController -
 type FREController interface {
 	ProcessCADFile(w http.ResponseWriter, r *http.Request)
-	ExtractBendFeatures(UserID string, cadFile *entity.CADFile)
-	GenerateProcessingPlan(UserID string, cadFile *entity.CADFile)
+	ExtractBendFeatures(UserID string, TaskID string, cadFile *entity.CADFile)
+	GenerateProcessingPlan(UserID string, TaskID string, cadFile *entity.CADFile)
 	BatchProcessCADFiles(w http.ResponseWriter, r *http.Request)
 }
 
@@ -54,11 +54,13 @@ func NewFREController(configuration configuration.ServiceConfig, cadService serv
 	}
 }
 
-func (c *freController) ExtractBendFeatures(UserID string, cadFile *entity.CADFile) {
+func (c *freController) ExtractBendFeatures(UserID string, TaskID string, cadFile *entity.CADFile) {
 	request := &contracts.FeatureRecognitionStarted{
 		UserID:    UserID,
 		CADFileID: cadFile.ID.Hex(),
+		TaskID:    TaskID,
 		URL:       cadFile.StepURL,
+		EventType: "featureRecognitionStarted",
 	}
 
 	c.eventEmitter.Emit(request)
@@ -67,12 +69,14 @@ func (c *freController) ExtractBendFeatures(UserID string, cadFile *entity.CADFi
 	log.Printf("*********************************************************************")
 }
 
-func (c *freController) GenerateProcessingPlan(UserID string, cadFile *entity.CADFile) {
+func (c *freController) GenerateProcessingPlan(UserID string, TaskID string, cadFile *entity.CADFile) {
 	request := &contracts.ProcessPlanningStarted{
 		CADFileID:      cadFile.ID.Hex(),
 		UserID:         UserID,
+		TaskID:         TaskID,
 		BendCount:      int64(cadFile.FeatureProps.BendCount),
 		SerializedData: cadFile.FeatureProps.SerialData,
+		EventType:      "processPlanningStarted",
 	}
 
 	c.eventEmitter.Emit(request)
@@ -133,20 +137,30 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 			var res helper.Response
 			if cadFile.FeatureProps.ProcessLevel == 0 {
 				res = helper.BuildResponse(true, "Feature recognition started", &helper.EmptyObj{})
-				c.ExtractBendFeatures(id, cadFile)
+
 				task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
+				task, err := c.taskService.Create(&task)
+				if err != nil {
+					response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(response)
+					return
+				}
+
+				c.ExtractBendFeatures(id, task.TaskID.Hex(), cadFile)
 			} else if cadFile.FeatureProps.ProcessLevel == 1 {
 				res = helper.BuildResponse(true, "Process planning started", &helper.EmptyObj{})
-				c.GenerateProcessingPlan(id, cadFile)
-				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
-			}
 
-			_, err := c.taskService.Create(&task)
-			if err != nil {
-				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(response)
-				return
+				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
+				task, err := c.taskService.Create(&task)
+				if err != nil {
+					response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(response)
+					return
+				}
+
+				c.GenerateProcessingPlan(id, task.TaskID.Hex(), cadFile)
 			}
 
 			go persistence.ClearCache(TASKCACHE)
@@ -223,13 +237,13 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 		for _, cadFile := range cadFiles {
 			if cadFile.FeatureProps.ProcessLevel == 0 {
 				res := helper.BuildResponse(true, fmt.Sprintf("Feature recognition started: %v", cadFile.FileName), &helper.EmptyObj{})
-				c.ExtractBendFeatures(id, &cadFile)
+				c.ExtractBendFeatures(id, task.TaskID.Hex(), &cadFile)
 				task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
 				json.NewEncoder(w).Encode(res)
 				freNum++
 			} else if cadFile.FeatureProps.ProcessLevel == 1 {
 				res := helper.BuildResponse(true, fmt.Sprintf("Process planning started: %v", cadFile.FileName), &helper.EmptyObj{})
-				c.GenerateProcessingPlan(id, &cadFile)
+				c.GenerateProcessingPlan(id, task.TaskID.Hex(), &cadFile)
 				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
 				json.NewEncoder(w).Encode(res)
 				ppNum++
