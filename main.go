@@ -13,6 +13,7 @@ import (
 	"github.com/WilfredDube/fxtract-backend/controller"
 	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	msgqueue_amqp "github.com/WilfredDube/fxtract-backend/lib/msgqueue/amqp"
+	"github.com/WilfredDube/fxtract-backend/listener"
 	"github.com/WilfredDube/fxtract-backend/middleware"
 	"github.com/WilfredDube/fxtract-backend/repository"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
@@ -42,6 +43,11 @@ func main() {
 	}
 
 	eventEmitter, err := msgqueue_amqp.NewAMQPEventEmitter(conn, "processes")
+	if err != nil {
+		panic(err)
+	}
+
+	eventListener, err := msgqueue_amqp.NewAMQPEventListener(conn, "processes", "FEATURERECOGNITIONCOMPLETE")
 	if err != nil {
 		panic(err)
 	}
@@ -155,14 +161,8 @@ func main() {
 		errs <- fmt.Errorf("%s", <-c)
 	}()
 
-	// notificationService := notification.NewMQResponseController(config, cadFileService, processingPlanService, userService, JWTService)
-	// go func() {
-	// 	notificationService.FeatureRecognitionNotifications("FRECRESPONSE")
-	// }()
-
-	// go func() {
-	// 	notificationService.ProcessingPlanNotifications("PPRESPONSE")
-	// }()
+	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService, TaskService: taskService}
+	go processor.ProcessEvents()
 
 	fmt.Printf("Terminated %s\n", <-errs)
 }
