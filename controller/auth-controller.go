@@ -52,9 +52,61 @@ func NewLoginResponse(user *entity.User) loginResponse {
 	}
 }
 
+func isEmailValid(email string) bool {
+	if len(email) < 5 && len(email) > 254 {
+		return false
+	}
+
+	var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	if !emailRegex.MatchString(email) {
+		return false
+	}
+
+	parts := strings.Split(email, "@")
+	mx, err := net.LookupMX(parts[1])
+	if err != nil || len(mx) == 0 {
+		return false
+	}
+	return true
+}
+
+func isPasswordValid(s string) bool {
+	var (
+		hasMinLen  = false
+		hasUpper   = false
+		hasLower   = false
+		hasNumber  = false
+		hasSpecial = false
+	)
+	if len(s) >= 7 {
+		hasMinLen = true
+	}
+	for _, char := range s {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial
+}
+
 func validate(user *entity.User) error {
 	if (user.Email == "") || (user.Password == "") {
 		return errors.New("email or password can not be empty")
+	}
+
+	if !isEmailValid(user.Email) {
+		return errors.New("invalid email address")
+	}
+
+	if !isPasswordValid(user.Password) {
+		return errors.New("invalid password")
 	}
 
 	return nil
