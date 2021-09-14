@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // DBTYPE -
@@ -35,21 +36,38 @@ var (
 
 // ServiceConfig -
 type ServiceConfig struct {
-	DatabaseType       DBTYPE `json:"database_type"`       //dbType
-	DatabaseConnection string `json:"database_connection"` // dbURL
-	DatabaseName       string `json:"database_name"`       // dbname e.g fxtract_db
-	DatabaseTimeout    int    `json:"database_timeout"`    // dbtimeout
-	RestfulEndPoint    string `json:"restful_endpoint"`    // service connection end point
-	RestfulTLSEndPoint string `json:"restful_tlsendpoint"`
-	AMQPMessageBroker  string `json:"amqp_message_broker"`
-	RabbitHost         string `json:"rabbit_host"`
-	RabbitPort         string `json:"rabbit_port"`
-	RabbitUser         string `json:"rabbit_user"`
-	RabbitPassword     string `json:"rabbit_password"`
+	DatabaseType            DBTYPE `json:"database_type"`       //dbType
+	DatabaseConnection      string `json:"database_connection"` // dbURL
+	DatabaseName            string `json:"database_name"`       // dbname e.g fxtract_db
+	DatabaseTimeout         int    `json:"database_timeout"`    // dbtimeout
+	RestfulEndPoint         string `json:"restful_endpoint"`    // service connection end point
+	RestfulTLSEndPoint      string `json:"restful_tlsendpoint"`
+	AMQPMessageBroker       string `json:"amqp_message_broker"`
+	RabbitHost              string `json:"rabbit_host"`
+	RabbitPort              string `json:"rabbit_port"`
+	RabbitUser              string `json:"rabbit_user"`
+	RabbitPassword          string `json:"rabbit_password"`
+	SendGridApiKey          string
+	MailVerifCodeExpiration int64 // in hours
+	PassResetCodeExpiration int64 // in minutes
+	MailVerifTemplateID     string
+	PassResetTemplateID     string
 }
 
 // ExtractConfiguration - extracts all database configurations from a file
 func ExtractConfiguration(filename string) (ServiceConfig, error) {
+
+	os.Setenv("MAIL_VERIFICATION_CODE_EXPIRATION", "24")
+	os.Setenv("PASSWORD_RESET_CODE_EXPIRATION", "15")
+	os.Setenv("MAIL_VERIFICATION_TEMPLATE_ID", "d-fc7203313c074f0e8354787bf2979e21")
+	os.Setenv("PASSWORD_RESET_TEMPLATE_ID", "d-52bdc05ac25242b38e3ebdc45d31a6dc")
+
+	MailVerifCodeExpiration, _ := strconv.ParseInt(os.Getenv("MAIL_VERIFICATION_CODE_EXPIRATION"), 10, 64)
+	PassResetCodeExpiration, _ := strconv.ParseInt(os.Getenv("PASSWORD_RESET_CODE_EXPIRATION"), 10, 64)
+	MailVerifTemplateID := os.Getenv("MAIL_VERIFICATION_TEMPLATE_ID")
+	PassResetTemplateID := os.Getenv("PASSWORD_RESET_TEMPLATE_ID")
+	SendGridApiKey := os.Getenv("SENDGRID_API_KEY")
+
 	config := ServiceConfig{
 		DBTypeDefault,
 		DBConnectionDefault,
@@ -62,6 +80,11 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 		RabbitPortDefault,
 		RabbitUserDefault,
 		RabbitPasswordDefault,
+		SendGridApiKey,
+		MailVerifCodeExpiration,
+		PassResetCodeExpiration,
+		MailVerifTemplateID,
+		PassResetTemplateID,
 	}
 
 	file, err := os.Open(filename)
