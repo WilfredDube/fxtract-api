@@ -116,6 +116,11 @@ func main() {
 
 	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
+	r.HandleFunc("/api/auth/verify", authController.VerifyMail).Methods("POST")
+	r.HandleFunc("/api/auth/get-password-reset-code", authController.GeneratePassResetCode).Methods("POST")
+	r.HandleFunc("/api/auth/verify-password-reset-code", authController.VerifyPasswordReset).Methods("POST")
+	r.HandleFunc("/api/auth/reset-password", authController.ResetPassword).Methods("POST")
+	r.HandleFunc("/api/auth/verify", authController.VerifyMail).Methods("POST")
 	r.HandleFunc("/api/auth/login", authController.Login).Methods("POST")
 	r.HandleFunc("/api/auth/logout", authController.Logout).Methods("POST")
 
