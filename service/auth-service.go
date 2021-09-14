@@ -14,6 +14,7 @@ type AuthService interface {
 	CreateUser(user entity.User) (entity.User, error)
 	FindByEmail(email string) entity.User
 	IsDuplicateEmail(email string) bool
+	UpdateUserVerificationStatus(email string, true bool) error
 }
 
 type authService struct {
@@ -49,6 +50,10 @@ func (service *authService) FindByEmail(email string) entity.User {
 func (service *authService) IsDuplicateEmail(email string) bool {
 	res := service.userRepository.IsDuplicateEmail(email)
 	return (res == nil)
+}
+
+func (service *authService) UpdateUserVerificationStatus(email string, status bool) error {
+	return service.userRepository.UpdateUserVerificationStatus(email, status)
 }
 
 func comparePassword(hashedPwd string, plainPassword []byte) bool {

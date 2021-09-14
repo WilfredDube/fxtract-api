@@ -19,6 +19,8 @@ type UserRepository interface {
 
 	Update(user entity.User) (*entity.User, error)
 
+	UpdateUserVerificationStatus(email string, status bool) error
+
 	// Find a project by its id
 	Profile(id string) (*entity.User, error)
 
@@ -106,6 +108,28 @@ func (r *userRepoConnection) Update(user entity.User) (*entity.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (r *userRepoConnection) UpdateUserVerificationStatus(email string, status bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	collection := r.connection.Client.Database(r.connection.Database).Collection(userCollectionName)
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"email": email},
+		bson.D{
+			{"$set", bson.M{
+				"isverified": status,
+				"updated_at": time.Now().Unix(),
+			}}},
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "repository.User.UpdateUserVerificationStatus")
+	}
+
+	return nil
 }
 
 // Find -
