@@ -112,6 +112,16 @@ func validate(user *entity.User) error {
 	return nil
 }
 
+// GenerateRandomString generate a string of random characters of given length
+func GenerateRandomString(length int) string {
+	charset := random.ASCIICharacters
+	code, err := random.Random(length, charset, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return code
+}
+
 func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
