@@ -240,6 +240,13 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !authResult.IsVerified {
+		response := helper.BuildErrorResponse("Please check email for the verification code", "Account has not been verified", helper.EmptyObj{})
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	err = c.jwtService.SetAuthentication(&authResult, "fxtract", 86400*7, service.LOGIN, w, r)
 	if err != nil {
 		response := helper.BuildErrorResponse("Please check again your credential", err.Error(), helper.EmptyObj{})
