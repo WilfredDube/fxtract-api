@@ -24,6 +24,7 @@ type loginResponse struct {
 // AuthController -
 type AuthController interface {
 	Register(w http.ResponseWriter, r *http.Request)
+	VerifyMail(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
 	Logout(w http.ResponseWriter, r *http.Request)
 }
@@ -265,3 +266,63 @@ func (c *authController) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
+
+func (c *authController) VerifyMail(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	log.Println("verifying the confimation code")
+	verificationMsg := &verificationMessage{}
+
+	err := json.NewDecoder(r.Body).Decode(verificationMsg)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	verificationData := &entity.Verification{
+		Email: verificationMsg.Email,
+		Code:  verificationMsg.Code,
+		Type:  entity.MailConfirmation,
+	}
+
+	actualVerificationData, err := c.verification.Find(verificationData.Email, verificationData.Type)
+	if err != nil {
+		response := helper.BuildErrorResponse("unable to fetch verification data", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	valid, err := c.verify(actualVerificationData, verificationData)
+	if !valid {
+		response := helper.BuildErrorResponse("Invalid verification code", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// correct code, update user status to verified.
+	err = c.authService.UpdateUserVerificationStatus(verificationData.Email, true)
+	if err != nil {
+		response := helper.BuildErrorResponse("Unable to verify mail. Please try again later", err.Error(), helper.EmptyObj{})
+		log.Println("unable to set user verification status to true")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// delete the VerificationData from db
+	_, err = c.verification.Delete(actualVerificationData.ID.Hex())
+	if err != nil {
+		log.Println("unable to delete the verification data", "error", err)
+	}
+
+	log.Println("user mail verification succeeded")
+
+	response := helper.BuildResponse(true, "OK!", "Mail Verification succeeded")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
+}
+
