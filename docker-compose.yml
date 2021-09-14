@@ -17,6 +17,8 @@ services:
       - redis
     networks:
       - fxtnet
+    env_file:
+      - sendgrid.env
 
   mongo:
     image: mongo
