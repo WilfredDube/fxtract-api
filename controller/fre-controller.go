@@ -77,6 +77,7 @@ func (c *freController) GenerateProcessingPlan(UserID string, TaskID string, cad
 		BendCount:      int64(cadFile.FeatureProps.BendCount),
 		SerializedData: cadFile.FeatureProps.SerialData,
 		EventType:      "processPlanningStarted",
+		FRETime:        cadFile.FeatureProps.FRETime,
 	}
 
 	c.eventEmitter.Emit(request)

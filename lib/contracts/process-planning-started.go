@@ -1,12 +1,13 @@
 package contracts
 
 type ProcessPlanningStarted struct {
-	UserID         string `json:"user_id"`
-	CADFileID      string `json:"cadfile_id"`
-	TaskID         string `json:"task_id" `
-	BendCount      int64  `json:"bend_count"`
-	SerializedData string `json:"serialized_data"`
-	EventType      string `json:"event_type"`
+	UserID         string  `json:"user_id"`
+	CADFileID      string  `json:"cadfile_id"`
+	TaskID         string  `json:"task_id" `
+	BendCount      int64   `json:"bend_count"`
+	SerializedData string  `json:"serialized_data"`
+	EventType      string  `json:"event_type"`
+	FRETime        float64 `json:"fre_time"`
 }
 
 // EventName returns the event's name
