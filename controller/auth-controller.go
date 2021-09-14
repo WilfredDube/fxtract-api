@@ -25,6 +25,7 @@ type loginResponse struct {
 type AuthController interface {
 	Register(w http.ResponseWriter, r *http.Request)
 	VerifyMail(w http.ResponseWriter, r *http.Request)
+	GeneratePassResetCode(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
 	Logout(w http.ResponseWriter, r *http.Request)
 }
@@ -323,6 +324,67 @@ func (c *authController) VerifyMail(w http.ResponseWriter, r *http.Request) {
 
 	response := helper.BuildResponse(true, "OK!", "Mail Verification succeeded")
 	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
+}
+
+
+func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	passwordMsg := &changePasswordMessage{}
+	err := json.NewDecoder(r.Body).Decode(passwordMsg)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	user := c.authService.FindByEmail(passwordMsg.Email)
+	if err != nil {
+		response := helper.BuildErrorResponse("User not found", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// Send verification mail
+	from := "appystore76@gmail.com" // TODO: save to config or env
+	to := []string{user.Email}
+	subject := "Email Verification for Fxtract"
+	mailType := service.PassReset
+	mailData := &service.MailData{
+		Username: user.Firstname,
+		Code:     GenerateRandomString(8),
+	}
+
+	mailReq := c.mailService.NewMail(from, to, subject, mailType, mailData)
+	err = c.mailService.SendMail(mailReq)
+	if err != nil {
+		log.Println("unable to send mail", err)
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	verificationData := &entity.Verification{
+		Email:     user.Email,
+		Code:      mailData.Code,
+		Type:      entity.PassReset,
+		ExpiresAt: time.Now().Add(time.Hour * time.Duration(45)).Unix(),
+	}
+
+	_, err = c.verification.Create(verificationData)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response := helper.BuildResponse(true, "Check your email for the code to reset your password", helper.EmptyObj{})
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
