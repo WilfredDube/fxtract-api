@@ -27,6 +27,7 @@ type AuthController interface {
 	VerifyMail(w http.ResponseWriter, r *http.Request)
 	GeneratePassResetCode(w http.ResponseWriter, r *http.Request)
 	VerifyPasswordReset(w http.ResponseWriter, r *http.Request)
+	ResetPassword(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
 	Logout(w http.ResponseWriter, r *http.Request)
 }
@@ -426,6 +427,84 @@ func (c *authController) VerifyPasswordReset(w http.ResponseWriter, r *http.Requ
 	}
 
 	response := helper.BuildResponse(true, "OK!", actualVerificationData.Code)
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
+}
+
+func (c *authController) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	log.Println("verifying the confimation code")
+	passwdReq := &passwordRequest{}
+
+	err := json.NewDecoder(r.Body).Decode(passwdReq)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	verificationData, err := c.verification.Find(passwdReq.Email, entity.PassReset)
+	if err != nil {
+		response := helper.BuildErrorResponse("unable to fetch verification data", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if verificationData.Code != passwdReq.Code {
+		response := helper.BuildErrorResponse("Unable to reset password. Please try again later", "Invalid reset code", helper.EmptyObj{})
+		log.Println("verification code did not match even after verifying PassReset")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if passwdReq.Password != passwdReq.PasswordConfirm {
+		response := helper.BuildErrorResponse("Password and re-entered Password are not same", "password and password re-enter did not match", helper.EmptyObj{})
+		log.Println("password and password re-enter did not match")
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if !isPasswordValid(passwdReq.Password) {
+		response := helper.BuildErrorResponse("Invalid password. Please try again later", "Password does not meet criteria", helper.EmptyObj{})
+		log.Println("Password does not meet criteria")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(passwdReq.Password), bcrypt.DefaultCost)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed password change", "Failed to change the password. Try again later", helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	hashedPassword := string(hash)
+
+	err = c.authService.UpdateUserPassword(passwdReq.Email, hashedPassword)
+	if err != nil {
+		response := helper.BuildErrorResponse("Unable to verify mail. Please try again later", err.Error(), helper.EmptyObj{})
+		log.Println("unable to set user verification status to true")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// delete the VerificationData from db
+	_, err = c.verification.Delete(verificationData.ID.Hex())
+	if err != nil {
+		log.Println("unable to delete the verification data", "error", err)
+	}
+
+	log.Println("password changed successfully")
+
+	response := helper.BuildResponse(true, "OK!", "Password change successfully")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(response)
 }
