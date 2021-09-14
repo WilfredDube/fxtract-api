@@ -65,7 +65,11 @@ func main() {
 	userController := controller.NewUserController(userService, JWTService, cache)
 
 	authService := service.NewAuthService(userRepo)
-	authController := controller.NewAuthController(authService, JWTService)
+	verificationRepo := repository.NewVerificationRepository(*repo)
+	verificationService := service.NewVerificationService(verificationRepo)
+
+	mailService := service.NewSGMailService(&config)
+	authController := controller.NewAuthController(authService, JWTService, mailService, verificationService)
 
 	cadFileRepo := repository.NewCadFileRepository(*repo)
 	cadFileService := service.NewCadFileService(cadFileRepo)
