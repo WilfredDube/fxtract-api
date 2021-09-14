@@ -173,9 +173,45 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	helper.CreateFolder(user.ID.Hex(), false)
+	// Send verification mail
+	from := "appystore76@gmail.com" // TODO: save to config or env
+	to := []string{user.Email}
+	subject := "Email Verification for Fxtract"
+	mailType := service.MailConfirmation
+	mailData := &service.MailData{
+		Username: user.Firstname,
+		Code:     GenerateRandomString(8),
+	}
 
-	response := helper.BuildResponse(true, "OK!", helper.EmptyObj{})
+	mailReq := c.mailService.NewMail(from, to, subject, mailType, mailData)
+	err = c.mailService.SendMail(mailReq)
+	if err != nil {
+		log.Println("unable to send mail", err)
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	verificationData := &entity.Verification{
+		Email:     user.Email,
+		Code:      mailData.Code,
+		Type:      entity.MailConfirmation,
+		ExpiresAt: time.Now().Add(time.Hour * time.Duration(45)).Unix(),
+	}
+
+	_, err = c.verification.Create(verificationData)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// TODO : create azure folder for user
+	// helper.CreateFolder(user.ID.Hex(), false)
+
+	response := helper.BuildResponse(true, "User created successfully", helper.EmptyObj{})
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
