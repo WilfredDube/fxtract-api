@@ -329,6 +329,27 @@ func (c *authController) VerifyMail(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func (c *authController) verify(actualVerificationData *entity.Verification, verificationData *entity.Verification) (bool, error) {
+	timeT := time.Unix(actualVerificationData.ExpiresAt, 0)
+
+	// check for expiration
+	if timeT.Before(time.Now()) {
+		log.Println("verification data provided is expired")
+		_, err := c.verification.Delete(actualVerificationData.ID.Hex())
+		if err != nil {
+			log.Println("unable to delete the verification data", "error", err)
+		}
+
+		return false, errors.New("confirmation code has expired. Please try generating a new code")
+	}
+
+	if actualVerificationData.Code != verificationData.Code {
+		log.Println("verification of mail failed. Invalid verification code provided")
+		return false, errors.New("verification code provided is Invalid. Please look in your mail for the code")
+	}
+
+	return true, nil
+}
 
 func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
