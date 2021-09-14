@@ -3,12 +3,19 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
+	"net"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/WilfredDube/fxtract-backend/service"
+	"github.com/mazen160/go-random"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -19,6 +26,21 @@ type loginResponse struct {
 	Email     string      `json:"email"`
 	UserRole  entity.Role `json:"role"`
 	CreatedAt int64       `json:"created_at"`
+}
+
+type changePasswordMessage struct {
+	Email string `json:"email"`
+}
+type verificationMessage struct {
+	Email string `json:"email"`
+	Code  string `json:"code" `
+}
+
+type passwordRequest struct {
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"password_confirm"`
+	Code            string `json:"code" `
 }
 
 // AuthController -
@@ -33,15 +55,20 @@ type AuthController interface {
 }
 
 type authController struct {
-	authService service.AuthService
-	jwtService  service.JWTService
+	authService  service.AuthService
+	jwtService   service.JWTService
+	mailService  service.MailService
+	verification service.VerificationService
 }
 
 //NewAuthController creates a new instance of AuthController
-func NewAuthController(authService service.AuthService, jwtService service.JWTService) AuthController {
+func NewAuthController(authService service.AuthService, jwtService service.JWTService,
+	mailService service.MailService, verification service.VerificationService) AuthController {
 	return &authController{
-		authService: authService,
-		jwtService:  jwtService,
+		authService:  authService,
+		jwtService:   jwtService,
+		mailService:  mailService,
+		verification: verification,
 	}
 }
 
