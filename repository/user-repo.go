@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/entity"
@@ -20,6 +21,8 @@ type UserRepository interface {
 	Update(user entity.User) (*entity.User, error)
 
 	UpdateUserVerificationStatus(email string, status bool) error
+
+	UpdateUserPassword(email string, passwordHash string) error
 
 	// Find a project by its id
 	Profile(id string) (*entity.User, error)
@@ -127,6 +130,28 @@ func (r *userRepoConnection) UpdateUserVerificationStatus(email string, status b
 
 	if err != nil {
 		return errors.Wrap(err, "repository.User.UpdateUserVerificationStatus")
+	}
+
+	return nil
+}
+
+func (r *userRepoConnection) UpdateUserPassword(email string, passwordHash string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	collection := r.connection.Client.Database(r.connection.Database).Collection(userCollectionName)
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"email": email},
+		bson.D{
+			{"$set", bson.M{
+				"password":   passwordHash,
+				"updated_at": time.Now().Unix(),
+			}}},
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "repository.User.UpdateUserPassword")
 	}
 
 	return nil
