@@ -26,6 +26,7 @@ type AuthController interface {
 	Register(w http.ResponseWriter, r *http.Request)
 	VerifyMail(w http.ResponseWriter, r *http.Request)
 	GeneratePassResetCode(w http.ResponseWriter, r *http.Request)
+	VerifyPasswordReset(w http.ResponseWriter, r *http.Request)
 	Login(w http.ResponseWriter, r *http.Request)
 	Logout(w http.ResponseWriter, r *http.Request)
 }
@@ -388,3 +389,43 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
+func (c *authController) VerifyPasswordReset(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	log.Println("verifying the confimation code")
+	verificationMsg := &verificationMessage{}
+
+	err := json.NewDecoder(r.Body).Decode(verificationMsg)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	verificationData := &entity.Verification{
+		Email: verificationMsg.Email,
+		Code:  verificationMsg.Code,
+		Type:  entity.PassReset,
+	}
+
+	actualVerificationData, err := c.verification.Find(verificationData.Email, verificationData.Type)
+	if err != nil {
+		response := helper.BuildErrorResponse("unable to fetch verification data", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	valid, err := c.verify(actualVerificationData, verificationData)
+	if !valid {
+		response := helper.BuildErrorResponse("Invalid verification code", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusNotAcceptable)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response := helper.BuildResponse(true, "OK!", actualVerificationData.Code)
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(response)
+}
