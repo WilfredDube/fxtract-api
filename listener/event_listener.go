@@ -18,6 +18,7 @@ type EventProcessor struct {
 	TaskService           service.TaskService
 	ToolService           service.ToolService
 	ProcessingPlanService service.ProcessingPlanService
+	MaterialService       service.MaterialService
 }
 
 func (p *EventProcessor) ProcessEvents(events ...string) {
@@ -62,6 +63,21 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 
 			cadFile.BendFeatures[i].ToolID = tool.ToolID
 		}
+
+		material, err := p.MaterialService.Find(cadFile.Material)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed to retrieve material data: ", err)
+		}
+
+		maxLength := 0.0
+		for _, file := range cadFile.BendFeatures {
+			if file.Length > maxLength {
+				maxLength = file.Length
+			}
+		}
+
+		bendingForce := (maxLength * cadFile.FeatureProps.Thickness * material.KFactor * material.TensileStrength) / 8
+		cadFile.FeatureProps.BendingForce = bendingForce
 
 		_, err = p.CadFileService.Update(*cadFile)
 		if err != nil {
