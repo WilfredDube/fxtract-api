@@ -18,6 +18,8 @@ jobs:
         with:
           image: doubleu/fxtract-api
           registry: docker.io
+          tags: v1, latest
+          dockerfile: Dockerfile
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
   
