@@ -5,9 +5,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/WilfredDube/fxtract-backend/controller"
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/lib/contracts"
 	"github.com/WilfredDube/fxtract-backend/lib/msgqueue"
+	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -84,6 +86,10 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 			log.Fatalf("%s: %s", "Failed to update data: ", err)
 		}
 
+		PROJECTCADFILES := controller.CADFILECACHE + cadFile.ProjectID.Hex()
+		go persistence.ClearCache(cadFile.ProjectID.Hex())
+		go persistence.ClearCache(PROJECTCADFILES)
+
 		task, err := p.TaskService.Find(e.TaskID)
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed to retrieve task data: ", err)
@@ -134,6 +140,10 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		if err != nil {
 			log.Fatalf("%s: %s", "Cadfile update failed ", err)
 		}
+
+		PROJECTCADFILES := controller.CADFILECACHE + cadFile.ProjectID.Hex()
+		go persistence.ClearCache(cadFile.ProjectID.Hex())
+		go persistence.ClearCache(PROJECTCADFILES)
 
 		task, err := p.TaskService.Find(e.TaskID)
 		if err != nil {
