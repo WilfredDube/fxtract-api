@@ -26,6 +26,8 @@ type CADFileRepository interface {
 
 	FindAllFiles() ([]entity.CADFile, error)
 
+	FindSelected(selectedFiles []string) ([]entity.CADFile, error)
+
 	// Delete a project
 	Delete(projectID string) (int64, error)
 
@@ -148,6 +150,33 @@ func (r *cadFileRepoConnection) FindAll(projectID string) ([]entity.CADFile, err
 			return nil, errors.Wrap(errors.New("Projects not found"), "repository.CADFile.FindAll")
 		}
 		return nil, errors.Wrap(err, "repository.CADFile.FindAll")
+	}
+
+	cursor.All(ctx, cadfiles)
+	defer cursor.Close(ctx)
+
+	return *cadfiles, nil
+}
+
+func (r *cadFileRepoConnection) FindSelected(selectedFiles []string) ([]entity.CADFile, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	var ids []primitive.ObjectID
+	for _, selectedID := range selectedFiles {
+		id, _ := primitive.ObjectIDFromHex(selectedID)
+		ids = append(ids, id)
+	}
+
+	cadfiles := &[]entity.CADFile{}
+	collection := r.connection.Client.Database(r.connection.Database).Collection(cadFileCollectionName)
+
+	cursor, err := collection.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		if err == mongo.ErrNilDocument {
+			return nil, errors.Wrap(errors.New("Cadfiles not found"), "repository.CADFile.FindSelected")
+		}
+		return nil, errors.Wrap(err, "repository.CADFile.FindSelected")
 	}
 
 	cursor.All(ctx, cadfiles)

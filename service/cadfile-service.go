@@ -19,6 +19,7 @@ type CadFileService interface {
 	Find(id string) (*entity.CADFile, error)
 	FindAll(projectID string) ([]entity.CADFile, error)
 	FindAllFiles() ([]entity.CADFile, error)
+	FindSelected(selectedFiles []string) ([]entity.CADFile, error)
 	Delete(id string) (int64, error)
 	CascadeDelete(id string) (int64, error)
 }
@@ -57,6 +58,10 @@ func (*cadFileService) Find(id string) (*entity.CADFile, error) {
 
 func (*cadFileService) FindAll(projectID string) ([]entity.CADFile, error) {
 	return cadFileRepo.FindAll(projectID)
+}
+
+func (*cadFileService) FindSelected(selectedFiles []string) ([]entity.CADFile, error) {
+	return cadFileRepo.FindSelected(selectedFiles)
 }
 
 func (*cadFileService) Delete(id string) (int64, error) {
