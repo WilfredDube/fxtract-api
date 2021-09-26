@@ -157,9 +157,13 @@ func main() {
 	// processes: type, status
 
 	originsObj := handlers.AllowedOrigins([]string{"http://localhost:3000"})
-	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type", "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Header"})
+	credentials := handlers.AllowCredentials()
+	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type",
+		"Accept", "Authorization", "Origin, Accept", "X-Requested-With",
+		"Access-Control-Request-Method", "Access-Control-Request-Header",
+	})
 	methodsObj := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
-	server := handlers.CORS(originsObj, methodsObj, headersObj)(r)
+	server := handlers.CORS(credentials, originsObj, methodsObj, headersObj)(r)
 
 	errs := make(chan error, 3)
 	go func() {
