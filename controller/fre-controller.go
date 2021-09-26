@@ -207,10 +207,16 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		params := mux.Vars(r)
-		projectID := params["pid"]
+		var cadFilesToProcess []string
+		err := json.NewDecoder(r.Body).Decode(&cadFilesToProcess)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 
-		cadFiles, err := c.cadFileService.FindAll(projectID)
+		cadFiles, err := c.cadFileService.FindSelected(cadFilesToProcess)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
