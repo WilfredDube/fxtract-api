@@ -101,6 +101,7 @@ func main() {
 
 	// Project creation and CAD file upload
 	r.HandleFunc("/api/user/projects", projectController.AddProject).Methods("POST")
+	r.HandleFunc("/api/user/projects", projectController.UpdateProject).Methods("PUT")
 	r.HandleFunc("/api/user/projects", projectController.FindAll).Methods("GET")
 	r.HandleFunc("/api/user/projects/{id}", projectController.FindByID).Methods("GET")
 	r.HandleFunc("/api/user/projects/{id}", projectController.Delete).Methods("DELETE")

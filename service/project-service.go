@@ -16,6 +16,7 @@ var (
 type ProjectService interface {
 	Validate(project *entity.Project) error
 	Create(project *entity.Project) (*entity.Project, error)
+	Update(project *entity.Project) (*entity.Project, error)
 	Find(id string) (*entity.Project, error)
 	FindByName(name string) (*entity.Project, error)
 	IsDuplicate(name string, OwnerID primitive.ObjectID) bool
@@ -45,6 +46,10 @@ func (*service) Validate(project *entity.Project) error {
 
 func (*service) Create(project *entity.Project) (*entity.Project, error) {
 	return repo.Create(project)
+}
+
+func (*service) Update(project *entity.Project) (*entity.Project, error) {
+	return repo.Update(project)
 }
 
 func (*service) Find(id string) (*entity.Project, error) {

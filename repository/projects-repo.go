@@ -15,6 +15,7 @@ import (
 type ProjectRepository interface {
 	// Create a new project
 	Create(project *entity.Project) (*entity.Project, error)
+	Update(project *entity.Project) (*entity.Project, error)
 
 	// Find a project by its id
 	Find(id string) (*entity.Project, error)
@@ -64,6 +65,28 @@ func (r *projectRepoConnection) Create(project *entity.Project) (*entity.Project
 
 	if err != nil {
 		return nil, errors.Wrap(err, "repository.Project.Create")
+	}
+
+	return project, nil
+}
+
+func (r *projectRepoConnection) Update(project *entity.Project) (*entity.Project, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
+	defer cancel()
+
+	collection := r.connection.Client.Database(r.connection.Database).Collection(projectCollectionName)
+	_, err := collection.UpdateOne(
+		ctx,
+		bson.M{"_id": project.ID},
+		bson.D{
+			{"$set", bson.M{
+				"title":       project.Title,
+				"description": project.Description,
+			}}},
+	)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "repository.Project.Update")
 	}
 
 	return project, nil

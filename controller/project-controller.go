@@ -38,6 +38,7 @@ type controller struct {
 // ProjectController -
 type ProjectController interface {
 	AddProject(w http.ResponseWriter, r *http.Request)
+	UpdateProject(w http.ResponseWriter, r *http.Request)
 	Upload(w http.ResponseWriter, r *http.Request)
 	uploadHandler(r *http.Request, projectFolder string, id primitive.ObjectID) (*[]entity.CADFile, error)
 	FindByID(w http.ResponseWriter, r *http.Request)
@@ -126,8 +127,65 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		projectFolder := response.OwnerID.Hex() + "/" + response.ID.Hex()
 		helper.CreateFolder(projectFolder, false)
 
-		PROJECTOWNERID := PROJECTCACHE + OwnerID.String()
-		go persistence.ClearCache(project.ID.String())
+		PROJECTOWNERID := PROJECTCACHE + OwnerID.Hex()
+		go persistence.ClearCache(project.ID.Hex())
+		go persistence.ClearCache(PROJECTOWNERID)
+
+		// res := helper.BuildResponse(true, "OK", response)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	res := helper.BuildErrorResponse("Failed to process request", "Project creation failed", helper.EmptyObj{})
+	w.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(w).Encode(res)
+}
+
+// NewProject - add a new project
+func (c *controller) UpdateProject(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	var response *entity.Project
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		id := claims["user_id"].(string)
+		OwnerID, _ := primitive.ObjectIDFromHex(id)
+
+		if _, err := c.userService.Profile(id); err != nil {
+			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		project := &entity.Project{}
+		err := json.NewDecoder(r.Body).Decode(project)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		response, err = c.projectService.Update(project)
+		if err != nil {
+			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		PROJECTOWNERID := PROJECTCACHE + OwnerID.Hex()
+		go persistence.ClearCache(project.ID.Hex())
 		go persistence.ClearCache(PROJECTOWNERID)
 
 		// res := helper.BuildResponse(true, "OK", response)
@@ -680,10 +738,11 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		helper.DeleteFile(cadFile.StepURL)
-		helper.DeleteFile(cadFile.ObjpURL)
+		// Delete blob
+		// helper.DeleteFile(cadFile.StepURL)
+		// helper.DeleteFile(cadFile.ObjpURL)
 
-		PROJECTCADFILES := CADFILECACHE + cadFile.ProjectID.String()
+		PROJECTCADFILES := CADFILECACHE + cadFile.ProjectID.Hex()
 		go persistence.ClearCache(id)
 		go persistence.ClearCache(PROJECTCADFILES)
 
