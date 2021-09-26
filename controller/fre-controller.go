@@ -237,7 +237,7 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		task.ProcessType = []entity.ProcessType{entity.FeatureRecognition, entity.ProcessPlanning}
+		task.ProcessType = []entity.ProcessType{}
 		task.Status = entity.Processing
 		task.CreatedAt = time.Now().Unix()
 
