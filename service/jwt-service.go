@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -97,9 +98,10 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 		if session.IsNew {
 			session.Options = &sessions.Options{
 				HttpOnly: true,
-				// Secure:   true,
-				MaxAge: maxAge,
-				Path:   "/",
+				Secure:   true,
+				SameSite: http.SameSiteStrictMode,
+				MaxAge:   maxAge,
+				Path:     "/",
 			}
 
 			time := strconv.FormatInt(user.CreatedAt, 10)
@@ -107,9 +109,18 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 			generatedToken := j.GenerateToken(user.ID.Hex(), time)
 			session.Values["authenticated"] = true
 			session.Values["token"] = generatedToken
-			session.Values["user_role"] = int(user.UserRole)
+			// session.Values["user_role"] = int(user.UserRole)
+			jsonUser, err := json.Marshal(user)
+			if err != nil {
+				return err
+			}
+
+			session.Values["user"] = jsonUser
 
 			err = sessions.Save(r, w)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		if session.Values["authenticated"] == false {
@@ -117,10 +128,14 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 		}
 		session.Values["authenticated"] = false
 		session.Values["token"] = ""
-		session.Values["user_role"] = -1
+		// session.Values["user_role"] = -1
+		session.Values["user"] = nil
 		session.Options.MaxAge = maxAge
 
 		err = sessions.Save(r, w)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err != nil {
