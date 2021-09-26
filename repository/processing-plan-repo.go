@@ -6,6 +6,7 @@ import (
 	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/pkg/errors"
+	"github.com/teris-io/shortid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -50,13 +51,19 @@ func (r *processingPlanRepoConnection) Create(processingPlan *entity.ProcessingP
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 
+	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+	if err != nil {
+		return nil, errors.Wrap(err, "repository.ProcessingPlan.Create")
+	}
+
 	collection := r.connection.Client.Database(r.connection.Database).Collection(processingPlanCollectionName)
-	_, err := collection.InsertOne(
+	_, err = collection.InsertOne(
 		ctx,
 		bson.M{
 			"_id":                          processingPlan.ID,
 			"cadfile_id":                   processingPlan.CADFileID,
 			"rotations":                    processingPlan.Rotations,
+			"part_no":                      sid.MustGenerate(),
 			"flips":                        processingPlan.Flips,
 			"tools":                        processingPlan.Tools,
 			"modules":                      processingPlan.Modules,
