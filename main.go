@@ -174,11 +174,11 @@ func main() {
 	}()
 
 	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService,
-		TaskService: taskService, ProcessingPlanService: processingPlanService, ToolService: toolService}
+		TaskService: taskService, ProcessingPlanService: processingPlanService, ToolService: toolService, MaterialService: materialService}
 	go processor.ProcessEvents("featureRecognitionComplete")
 
 	processPlanner := listener.EventProcessor{EventListener: processPlannerEventListener, CadFileService: cadFileService,
-		TaskService: taskService, ProcessingPlanService: processingPlanService}
+		TaskService: taskService, ProcessingPlanService: processingPlanService, MaterialService: materialService}
 	go processPlanner.ProcessEvents("processPlanningComplete")
 
 	fmt.Printf("Terminated %s\n", <-errs)
