@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -196,6 +197,14 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 		user.UserRole = entity.GENERAL_USER
 	}
 
+	from := os.Getenv("SENDER_EMAIL_ADDRESS") // TODO: save to config or env
+	if from == "" {
+		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	_, err = c.authService.CreateUser(*user)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed user registration", "User registration failed", helper.EmptyObj{})
@@ -205,7 +214,6 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send verification mail
-	from := "appystore76@gmail.com" // TODO: save to config or env
 	to := []string{user.Email}
 	subject := "Email Verification for Fxtract"
 	mailType := service.MailConfirmation
@@ -406,7 +414,14 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 	}
 
 	// Send verification mail
-	from := "appystore76@gmail.com" // TODO: save to config or env
+	from := os.Getenv("SENDER_EMAIL_ADDRESS") // TODO: save to config or env
+	if from == "" {
+		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	to := []string{user.Email}
 	subject := "Email Verification for Fxtract"
 	mailType := service.PassReset
