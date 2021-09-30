@@ -2,23 +2,41 @@ version: "3.4"
 
 services:
   fxtractapi:
-    image: fxtractapi
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: doubleu/fxtract-api
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile
     ports:
       - 8000:8000
-    volumes:
-      - .:/app
+    # volumes:
+    #   - .:/app
     restart: always
     depends_on:
       - mongo
       - rabbitmq
       - redis
+      - fre-service
+      - processing-plan-service
     networks:
       - fxtnet
     env_file:
-      - sendgrid.env
+      - .env
+
+  fre-service:
+    image: doubleu/fre-service
+    restart: always
+    networks:
+      - fxtnet
+    stdin_open: true
+    tty: true
+
+  processing-plan-service:
+    image: doubleu/processing-plan-service
+    restart: always
+    networks:
+      - fxtnet
+    stdin_open: true
+    tty: true
 
   mongo:
     image: mongo
