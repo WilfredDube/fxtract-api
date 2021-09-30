@@ -62,6 +62,12 @@ func (r *processingPlanRepoConnection) Create(processingPlan *entity.ProcessingP
 		bson.M{
 			"_id":                          processingPlan.ID,
 			"cadfile_id":                   processingPlan.CADFileID,
+			"filename":                     processingPlan.FileName,
+			"project_title":                processingPlan.ProjectTitle,
+			"engineer":                     processingPlan.Engineer,
+			"moderator":                    processingPlan.Moderator,
+			"material":                     processingPlan.Material,
+			"bending_force":                processingPlan.BendingForce,
 			"rotations":                    processingPlan.Rotations,
 			"part_no":                      sid.MustGenerate(),
 			"flips":                        processingPlan.Flips,
@@ -72,6 +78,7 @@ func (r *processingPlanRepoConnection) Create(processingPlan *entity.ProcessingP
 			"total_tool_distance":          processingPlan.TotalToolDistance,
 			"estimated_manufacturing_time": processingPlan.EstimatedManufacturingTime,
 			"bend_sequences":               processingPlan.BendingSequences,
+			"bend_features":                processingPlan.BendFeatures,
 			"created_at":                   processingPlan.CreatedAt,
 		},
 	)
@@ -95,7 +102,12 @@ func (r *processingPlanRepoConnection) Update(processingPlan entity.ProcessingPl
 			{"$set", bson.M{
 				"_id":                          processingPlan.ID,
 				"cadfile_id":                   processingPlan.CADFileID,
+				"filename":                     processingPlan.FileName,
+				"project_title":                processingPlan.ProjectTitle,
+				"engineer":                     processingPlan.Engineer,
 				"moderator":                    processingPlan.Moderator,
+				"material":                     processingPlan.Material,
+				"bending_force":                processingPlan.BendingForce,
 				"part_no":                      processingPlan.PartNo,
 				"rotations":                    processingPlan.Rotations,
 				"flips":                        processingPlan.Flips,
@@ -106,6 +118,7 @@ func (r *processingPlanRepoConnection) Update(processingPlan entity.ProcessingPl
 				"estimated_manufacturing_time": processingPlan.EstimatedManufacturingTime,
 				"total_tool_distance":          processingPlan.TotalToolDistance,
 				"bend_sequences":               processingPlan.BendingSequences,
+				"bend_features":                processingPlan.BendFeatures,
 				"created_at":                   processingPlan.CreatedAt,
 			}}},
 	)
@@ -148,7 +161,7 @@ func (r *processingPlanRepoConnection) FindAll(processingPlanID string) ([]entit
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 
-	id, err := primitive.ObjectIDFromHex(processingPlanID)
+	id, _ := primitive.ObjectIDFromHex(processingPlanID)
 
 	cadfiles := &[]entity.ProcessingPlan{}
 	collection := r.connection.Client.Database(r.connection.Database).Collection(processingPlanCollectionName)
