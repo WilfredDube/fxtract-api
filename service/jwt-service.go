@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/sessions"
+	"github.com/pkg/errors"
+	"github.com/teris-io/shortid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // DBTYPE -
@@ -53,11 +55,17 @@ func NewJWTService(store *sessions.CookieStore) JWTService {
 }
 
 func getSecretKey() string {
-	secretKey := os.Getenv("JWT_SECRET")
-	if secretKey != "" {
-		secretKey = "Fxtract"
+	sid, err := shortid.New(1, shortid.DefaultABC, 2342324354)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "Failed to generate key"))
 	}
-	return secretKey
+
+	secretKey, err := bcrypt.GenerateFromPassword([]byte(sid.MustGenerate()), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "Failed to generate key"))
+	}
+
+	return string(secretKey)
 }
 
 func (j *jwtService) GenerateToken(UserID string, CreatedAt string) string {
