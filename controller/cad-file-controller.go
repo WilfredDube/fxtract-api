@@ -42,19 +42,19 @@ func NewCADFileController(service service.CadFileService, pService service.Proje
 func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	cadFile := &entity.CADFile{}
-	err := json.NewDecoder(r.Body).Decode(cadFile)
-	if err != nil {
-		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
 	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
 	if err != nil {
 		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
 		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	cadFile := &entity.CADFile{}
+	err = json.NewDecoder(r.Body).Decode(cadFile)
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
