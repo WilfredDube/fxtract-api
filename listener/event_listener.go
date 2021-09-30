@@ -140,6 +140,12 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		processingPlan.TotalToolDistance = e.ProcessingPlan.TotalToolDistance
 		processingPlan.BendingSequences = e.ProcessingPlan.BendingSequences
 		processingPlan.Quantity = e.ProcessingPlan.Quantity
+		processingPlan.BendingForce = cadFile.FeatureProps.BendingForce
+		processingPlan.FileName = cadFile.FileName
+		processingPlan.Material = cadFile.Material
+		processingPlan.ProjectTitle = project.Title
+		processingPlan.Engineer = user.Firstname + " " + user.Lastname
+		processingPlan.BendFeatures = cadFile.BendFeatures
 		processingPlan.CreatedAt = time.Now().Unix()
 
 		_, err = p.ProcessingPlanService.Create(&processingPlan)
