@@ -47,6 +47,8 @@ type ServiceConfig struct {
 	RabbitPort              string `json:"rabbit_port"`
 	RabbitUser              string `json:"rabbit_user"`
 	RabbitPassword          string `json:"rabbit_password"`
+	RedisHost               string `json:"redis_host"`
+	RedisPort               string `json:"redis_port"`
 	SendGridApiKey          string
 	MailVerifCodeExpiration int64 // in hours
 	PassResetCodeExpiration int64 // in minutes
@@ -80,6 +82,8 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 		RabbitPortDefault,
 		RabbitUserDefault,
 		RabbitPasswordDefault,
+		RedisHostDefault,
+		RedisPortDefault,
 		SendGridApiKey,
 		MailVerifCodeExpiration,
 		PassResetCodeExpiration,

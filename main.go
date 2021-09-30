@@ -56,7 +56,7 @@ func main() {
 		panic(err)
 	}
 
-	cache := persistence.SetUpRedis()
+	cache := persistence.SetUpRedis(config)
 
 	JWTService := service.NewJWTService(store)
 

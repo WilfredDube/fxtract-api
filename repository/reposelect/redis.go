@@ -3,6 +3,7 @@ package repository
 import (
 	"log"
 
+	"github.com/WilfredDube/fxtract-backend/configuration"
 	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/go-redis/redis"
 )
@@ -10,9 +11,9 @@ import (
 var cache *redis.Client
 var cacheChannel chan string
 
-func SetUpRedis() *redis.Client {
+func SetUpRedis(config configuration.ServiceConfig) *redis.Client {
 	cache = redis.NewClient(&redis.Options{
-		Addr: "redis:6379",
+		Addr: config.RedisHost + ":" + config.RedisPort,
 		DB:   0,
 	})
 
