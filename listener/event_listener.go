@@ -21,6 +21,8 @@ type EventProcessor struct {
 	ToolService           service.ToolService
 	ProcessingPlanService service.ProcessingPlanService
 	MaterialService       service.MaterialService
+	ProjectService        service.ProjectService
+	UserService           service.UserService
 }
 
 func (p *EventProcessor) ProcessEvents(events ...string) {
@@ -117,6 +119,16 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		cadFile, err := p.CadFileService.Find(processingPlan.CADFileID.Hex())
 		if err != nil {
 			log.Fatalf("%s: %s", "Cadfile does not exist ", err)
+		}
+
+		project, err := p.ProjectService.Find(cadFile.ProjectID.Hex())
+		if err != nil {
+			log.Fatalf("%s: %s", "Project does not exist ", err)
+		}
+
+		user, err := p.UserService.Profile(project.OwnerID.Hex())
+		if err != nil {
+			log.Fatalf("%s: %s", "User does not exist ", err)
 		}
 
 		processingPlan.Rotations = e.ProcessingPlan.Rotations
