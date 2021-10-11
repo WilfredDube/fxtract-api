@@ -425,6 +425,15 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var OwnerID string = project.OwnerID.Hex()
+
+		PROJECTOWNERID := PROJECTCACHE + OwnerID
+		go persistence.ClearCache(project.OwnerID.Hex())
+		go persistence.ClearCache(PROJECTOWNERID)
+
+		PROJECTCADFILES := CADFILECACHE + project.ID.Hex()
+		go persistence.ClearCache(PROJECTCADFILES)
+
 		res := helper.BuildResponse(true, "Upload complete : OK!", uploadedFiles)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
@@ -448,7 +457,7 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 
 	// Get a reference to the fileHeaders.
 	// They are accessible only after ParseMultipartForm is called
-	files := r.MultipartForm.File["file"]
+	files := r.MultipartForm.File["files"]
 	material := r.MultipartForm.Value["material"][0]
 
 	nFiles := len(files)
@@ -457,6 +466,7 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		return nil, fmt.Errorf("select a file(s) to upload")
 	}
 
+	// TODO: change this when using azure and cad exchanger
 	if (nFiles % 2) != 0 {
 		return nil, fmt.Errorf("each STEP file must be uploaded with its corresponding obj file")
 	}
@@ -768,8 +778,7 @@ func (c *controller) FindProcessPlan(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		id := params["id"]
 
-		PROCESSPLAN := PROCESSPLANCACHE + id
-		result, err := c.cache.Get(PROCESSPLAN).Result()
+		result, err := c.cache.Get(id).Result()
 
 		var processPlan *entity.ProcessingPlan
 		if err != nil {
@@ -789,7 +798,7 @@ func (c *controller) FindProcessPlan(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if err := c.cache.Set(PROCESSPLAN, bytes, 30*time.Minute).Err(); err != nil {
+			if err := c.cache.Set(id, bytes, 30*time.Minute).Err(); err != nil {
 				response := helper.BuildErrorResponse("Failed to cache request", err.Error(), helper.EmptyObj{})
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(response)

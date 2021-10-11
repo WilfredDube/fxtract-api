@@ -1,12 +1,14 @@
 {
-	"database_type":"mongodb",
-	"database_connection":"mongodb://mongo",
-	"database_name":"fxtract_db",
-	"database_timeout":30,
-	"restful_endpoint":":8000",	
-	"amqp_message_broker":"amqp://guest:guest@rabbitmq/",
-	"rabbit_host": "localhost", 
- 	"rabbit_port": "5672"   ,  
- 	"rabbit_user": "guest"  ,  
- 	"rabbit_password": "guest" 
+  "database_type": "mongodb",
+  "database_connection": "mongodb://mongo:27017",
+  "database_name": "fxtract_db",
+  "database_timeout": 30,
+  "restful_endpoint": ":8000",
+  "amqp_message_broker": "amqp://guest:guest@rabbitmq/",
+  "rabbit_host": "rabbitmq",
+  "rabbit_port": "5672",
+  "rabbit_user": "guest",
+  "rabbit_password": "guest",
+  "redis_host": "redis",
+  "redis_port": "6379"
 }

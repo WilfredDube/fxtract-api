@@ -22,7 +22,7 @@ const (
 // var -
 var (
 	DBTypeDefault            = MONGODB
-	DBConnectionDefault      = "mongodb://mongo"
+	DBConnectionDefault      = "mongodb://mongo:27017"
 	DBNameDefault            = "fxtract_db"
 	DBTimeoutDefault         = 30
 	RestfulEPDefault         = ":8000"
@@ -32,6 +32,8 @@ var (
 	RabbitPortDefault        = "5672"
 	RabbitUserDefault        = "guest"
 	RabbitPasswordDefault    = "guest"
+	RedisHostDefault         = "redis"
+	RedisPortDefault         = "6379"
 )
 
 // ServiceConfig -
