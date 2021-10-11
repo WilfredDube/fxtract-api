@@ -24,6 +24,7 @@ type EventProcessor struct {
 	MaterialService       service.MaterialService
 	ProjectService        service.ProjectService
 	UserService           service.UserService
+	pdfService            service.PDFService
 }
 
 func (p *EventProcessor) ProcessEvents(events ...string) {
@@ -113,6 +114,7 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		log.Printf("==========================================================")
 		fmt.Printf("Received a Processing plan for CAD file ID: %v\n", e.ProcessingPlan.CADFileID)
 
+		p.pdfService = service.NewPDFService()
 		processingPlan := entity.ProcessingPlan{}
 		processingPlan.ID = primitive.NewObjectID()
 		processingPlan.CADFileID = e.ProcessingPlan.CADFileID
@@ -145,7 +147,7 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		processingPlan.FileName = cadFile.FileName
 		processingPlan.Material = cadFile.Material
 		processingPlan.ProjectTitle = project.Title
-		processingPlan.Engineer = user.Firstname + " " + user.Lastname
+		processingPlan.Engineer = user.FullName()
 		processingPlan.BendFeatures = cadFile.BendFeatures
 
 		sid, err := shortid.New(1, shortid.DefaultABC, 2342)
@@ -155,6 +157,17 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 
 		processingPlan.PartNo = sid.MustGenerate()
 		processingPlan.CreatedAt = time.Now().Unix()
+
+		// TODO: create goroutine to generate and upload pdf
+		pdfTempPath, err := p.pdfService.GeneratePDF(&processingPlan)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed: ", err)
+		}
+
+		// TODO: get the URL and upload the file to the cloud
+		fmt.Println(pdfTempPath)
+
+		// TODO: Delete the PDF after successful upload
 
 		_, err = p.ProcessingPlanService.Create(&processingPlan)
 		if err != nil {
