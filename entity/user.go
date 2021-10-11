@@ -23,3 +23,7 @@ type User struct {
 	CreatedAt  int64              `json:"created_at" bson:"created_at" validate:"empty=false"`
 	UpdatedAt  int64              `json:"updated_at" bson:"updated_at"`
 }
+
+func (u *User) FullName() string {
+	return (u.Firstname + " " + u.Lastname)
+}
