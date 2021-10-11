@@ -11,6 +11,7 @@ import (
 	"github.com/WilfredDube/fxtract-backend/lib/msgqueue"
 	persistence "github.com/WilfredDube/fxtract-backend/repository/reposelect"
 	"github.com/WilfredDube/fxtract-backend/service"
+	"github.com/teris-io/shortid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -146,6 +147,13 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		processingPlan.ProjectTitle = project.Title
 		processingPlan.Engineer = user.Firstname + " " + user.Lastname
 		processingPlan.BendFeatures = cadFile.BendFeatures
+
+		sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed to save processing plan: ", err)
+		}
+
+		processingPlan.PartNo = sid.MustGenerate()
 		processingPlan.CreatedAt = time.Now().Unix()
 
 		_, err = p.ProcessingPlanService.Create(&processingPlan)
