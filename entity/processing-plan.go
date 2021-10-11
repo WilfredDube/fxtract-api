@@ -7,6 +7,7 @@ type ProcessingPlan struct {
 	ID                         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	CADFileID                  primitive.ObjectID `json:"cadfile_id" bson:"cadfile_id,omitempty" validate:"empty=false"`
 	FileName                   string             `json:"filename" bson:"filename" validate:"empty=false"`
+	PdfURL                     string             `json:"pdf_url" bson:"pdf_url" validate:"empty=false"`
 	ProjectTitle               string             `json:"project_title" bson:"project_title" validate:"empty=false"`
 	Engineer                   string             `json:"engineer" bson:"engineer" validate:"empty=false"`
 	Material                   string             `json:"material" bson:"material" validate:"empty=false"`
