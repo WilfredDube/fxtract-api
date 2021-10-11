@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -118,12 +117,12 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 			session.Values["authenticated"] = true
 			session.Values["token"] = generatedToken
 			// session.Values["user_role"] = int(user.UserRole)
-			jsonUser, err := json.Marshal(user)
-			if err != nil {
-				return err
-			}
+			// jsonUser, err := json.Marshal(user)
+			// if err != nil {
+			// 	return err
+			// }
 
-			session.Values["user"] = jsonUser
+			// session.Values["user"] = jsonUser
 
 			err = sessions.Save(r, w)
 			if err != nil {
@@ -137,7 +136,7 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 		session.Values["authenticated"] = false
 		session.Values["token"] = ""
 		// session.Values["user_role"] = -1
-		session.Values["user"] = nil
+		// session.Values["user"] = nil
 		session.Options.MaxAge = maxAge
 
 		err = sessions.Save(r, w)

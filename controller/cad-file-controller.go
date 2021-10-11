@@ -207,7 +207,7 @@ func (c *cadFileController) Delete(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		id := params["id"]
 
-		cadFile, err := c.cadFileService.Find(id)
+		_, err := c.cadFileService.Find(id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
@@ -230,8 +230,9 @@ func (c *cadFileController) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		helper.DeleteFile(cadFile.StepURL)
-		helper.DeleteFile(cadFile.ObjpURL)
+		// Todo: delete blob
+		// helper.DeleteFile(cadFile.StepURL)
+		// helper.DeleteFile(cadFile.ObjpURL)
 
 		res := helper.BuildResponse(true, "OK!", deleteCount)
 		w.WriteHeader(http.StatusOK)

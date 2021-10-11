@@ -115,6 +115,8 @@ func main() {
 	r.HandleFunc("/api/user/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
 	r.HandleFunc("/api/user/process/{id}", projectController.FindProcessPlan).Methods("GET")
 
+	r.HandleFunc("/api/user/materials", materialController.FindAll).Methods("GET")
+
 	// User registration and login
 	r.HandleFunc("/api/auth/register", authController.Register).Methods("POST")
 	r.HandleFunc("/api/auth/verify", authController.VerifyMail).Methods("POST")
@@ -143,7 +145,6 @@ func main() {
 
 	// Material creation
 	r.HandleFunc("/api/admin/materials", middleware.CheckAdminRole(JWTService, materialController.AddMaterial)).Methods("POST")
-	r.HandleFunc("/api/admin/materials", middleware.CheckAdminRole(JWTService, materialController.FindAll)).Methods("GET")
 	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Find)).Methods("GET")
 	r.HandleFunc("/api/admin/materials/{id}", middleware.CheckAdminRole(JWTService, materialController.Delete)).Methods("DELETE")
 
