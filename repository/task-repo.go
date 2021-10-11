@@ -83,16 +83,8 @@ func (r *taskRepoConnection) Update(task entity.Task) (*entity.Task, error) {
 		bson.M{"_id": task.ID},
 		bson.D{
 			{"$set", bson.M{
-				"task_id":                      task.TaskID,
-				"user_id":                      task.UserID,
-				"cadfiles":                     task.CADFiles,
-				"process_type":                 task.ProcessType,
-				"status":                       task.Status,
-				"quantity":                     task.Quantity,
-				"processing_time":              task.ProcessingTime,
-				"estimated_manufacturing_time": task.EstimatedManufacturingTime,
-				"total_cost":                   task.TotalCost,
-				"created_at":                   task.CreatedAt,
+				"status":          task.Status,
+				"processing_time": task.ProcessingTime,
 			}}},
 	)
 
