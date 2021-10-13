@@ -7,10 +7,10 @@ COPY go.sum .
 RUN go mod download
 
 COPY . .
-RUN go build -o fxtractapi -v .
+RUN CGO_ENABLED=0 go build -o fxtractapi -v .
 
 #final stage
-FROM alpine:latest
+FROM scratch
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/fxtractapi ./

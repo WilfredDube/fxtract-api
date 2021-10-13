@@ -29,6 +29,8 @@ services:
       - fxtnet
     stdin_open: true
     tty: true
+    environment:
+      - AMQP=amqp://guest:guest@rabbitmq:5672
 
   processing-plan-service:
     image: doubleu/processing-plan-service
@@ -37,6 +39,9 @@ services:
       - fxtnet
     stdin_open: true
     tty: true
+    environment:
+      - AMQP=amqp://guest:guest@rabbitmq:5672"
+      - REDIS="tcp://redis:6379"
 
   mongo:
     image: mongo
