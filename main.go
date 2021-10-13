@@ -55,7 +55,7 @@ func main() {
 		panic(err)
 	}
 
-	sessionStore, err := redistore.NewRediStore(0, "tcp", ":"+config.RedisPort, "", []byte("oNrT10hnwnnUTeiwqm1ISP6W5qXmHWkT"))
+	sessionStore, err := redistore.NewRediStore(0, "tcp", config.RedisHost+":"+config.RedisPort, "", []byte("oNrT10hnwnnUTeiwqm1ISP6W5qXmHWkT"))
 	if err != nil {
 		panic(err)
 	}
