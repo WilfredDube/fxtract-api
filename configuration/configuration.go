@@ -104,7 +104,8 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 
 	err = json.NewDecoder(file).Decode(&config)
 
-	fmt.Printf("Using: %v : %v %v %v %v %v\n", filename, config.DatabaseType, config.DatabaseConnection, config.DatabaseName, config.DatabaseTimeout, config.RestfulEndPoint)
+	fmt.Printf("Using: %v : %v %v %v %v redis: %v %v\n", filename, config.DatabaseType, config.DatabaseConnection, config.DatabaseName, config.DatabaseTimeout, config.RestfulEndPoint,
+		config.RedisHost+":"+config.RedisPort)
 
 	return config, err
 }
