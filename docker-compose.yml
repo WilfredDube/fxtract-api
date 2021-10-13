@@ -8,8 +8,8 @@ services:
     #   dockerfile: ./Dockerfile
     ports:
       - 8000:8000
-    volumes:
-      - "fxtract-pdfs:/app/pdfs"
+    # volumes:
+    #   - "fxtract-pdfs:/app/pdfs"
     restart: always
     depends_on:
       - mongo
@@ -82,8 +82,6 @@ services:
 
 volumes:
   mongo-data:
-    driver: local
-  fxtract-pdfs:
     driver: local
 
 networks:
