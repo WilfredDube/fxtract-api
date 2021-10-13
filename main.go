@@ -19,13 +19,12 @@ import (
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"github.com/streadway/amqp"
+	"gopkg.in/boj/redistore.v1"
 )
 
 var (
 	configPath = flag.String("c", "./configuration/config.json", "Set the configuration file for setting up the database.")
-	store      = sessions.NewCookieStore([]byte("oNrT10hnwnnUTeiwqm1ISP6W5qXmHWkT"))
 )
 
 func main() {
@@ -56,8 +55,12 @@ func main() {
 		panic(err)
 	}
 
-	cache := persistence.SetUpRedis(config)
+	sessionStore, err := redistore.NewRediStore(0, "tcp", ":"+config.RedisPort, "", []byte("oNrT10hnwnnUTeiwqm1ISP6W5qXmHWkT"))
+	if err != nil {
+		panic(err)
+	}
 
+	JWTService := service.NewJWTService(sessionStore)
 
 	redisCache := persistence.SetUpRedis(config)
 
