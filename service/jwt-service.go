@@ -83,6 +83,7 @@ func (j *jwtService) GenerateToken(UserID string, CreatedAt string) string {
 	if err != nil {
 		panic(err)
 	}
+
 	return t
 }
 
@@ -97,8 +98,8 @@ func (j *jwtService) ValidateToken(token string) (*jwt.Token, error) {
 
 func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, maxAge int, authType AUTHTYPE, w http.ResponseWriter, r *http.Request) error {
 	session, err := j.store.Get(r, cookieName)
-	if err != nil {
-		log.Panic(err.Error())
+	if err != nil && authType != LOGIN {
+		log.Println(err.Error())
 		return err
 	}
 
@@ -117,27 +118,18 @@ func (j *jwtService) SetAuthentication(user *entity.User, cookieName string, max
 			generatedToken := j.GenerateToken(user.ID.Hex(), time)
 			session.Values["authenticated"] = true
 			session.Values["token"] = generatedToken
-			// session.Values["user_role"] = int(user.UserRole)
-			// jsonUser, err := json.Marshal(user)
-			// if err != nil {
-			// 	return err
-			// }
 
-			// session.Values["user"] = jsonUser
-
-			err = sessions.Save(r, w)
-			if err != nil {
+			if err = sessions.Save(r, w); err != nil {
 				return err
 			}
 		}
-	} else {
+	} else if authType == LOGOUT {
 		if session.Values["authenticated"] == false {
 			return fmt.Errorf("already signed out")
 		}
 		session.Values["authenticated"] = false
 		session.Values["token"] = ""
-		// session.Values["user_role"] = -1
-		// session.Values["user"] = nil
+
 		session.Options.MaxAge = maxAge
 
 		err = sessions.Save(r, w)
