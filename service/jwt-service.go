@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/teris-io/shortid"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/boj/redistore.v1"
 )
 
 // DBTYPE -
@@ -41,14 +42,14 @@ type jwtCustomClaim struct {
 type jwtService struct {
 	secretKey string
 	issuer    string
-	store     *sessions.CookieStore
+	store     *redistore.RediStore
 }
 
 //NewJWTService method is creates a new instance of JWTService
-func NewJWTService(store *sessions.CookieStore) JWTService {
+func NewJWTService(store *redistore.RediStore) JWTService {
 	return &jwtService{
 		issuer:    "Fxtract",
-		secretKey: getSecretKey(),
+		secretKey: "$2a$10$3Wk/bAObFrEn2/9.92YMGORCguJFHRUAVjbqbYsHHkgoSZIwptFhy",
 		store:     store,
 	}
 }
