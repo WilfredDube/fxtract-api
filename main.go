@@ -58,11 +58,12 @@ func main() {
 
 	cache := persistence.SetUpRedis(config)
 
-	JWTService := service.NewJWTService(store)
+
+	redisCache := persistence.SetUpRedis(config)
 
 	userRepo := repository.NewUserRepository(*repo)
 	userService := service.NewUserService(userRepo)
-	userController := controller.NewUserController(userService, JWTService, cache)
+	userController := controller.NewUserController(userService, JWTService, redisCache)
 
 	authService := service.NewAuthService(userRepo)
 	verificationRepo := repository.NewVerificationRepository(*repo)
@@ -79,23 +80,23 @@ func main() {
 
 	projectRepo := repository.NewProjectRepository(*repo)
 	projectService := service.NewProjectService(projectRepo)
-	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService, cache)
+	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService, redisCache)
 
 	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
-	toolController := controller.NewToolController(toolService, userService, JWTService, cache)
+	toolController := controller.NewToolController(toolService, userService, JWTService, redisCache)
 
 	materialRepo := repository.NewMaterialRepository(*repo)
 	materialService := service.NewMaterialService(materialRepo)
-	materialController := controller.NewMaterialController(materialService, userService, JWTService, cache)
+	materialController := controller.NewMaterialController(materialService, userService, JWTService, redisCache)
 
 	taskRepo := repository.NewTaskRepository(*repo)
 	taskService := service.NewTaskService(taskRepo)
-	taskController := controller.NewTaskController(taskService, JWTService, cache)
+	taskController := controller.NewTaskController(taskService, JWTService, redisCache)
 
-	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, cache, eventEmitter)
+	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, redisCache, eventEmitter)
 
 	r := mux.NewRouter()
 
