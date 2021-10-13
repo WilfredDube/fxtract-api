@@ -12,6 +12,5 @@ RUN CGO_ENABLED=0 go build -o fxtractapi -v .
 #final stage
 FROM scratch
 COPY --from=builder /app/fxtractapi /app
-RUN mkdir /app/pdfs
 CMD [ "./fxtractapi" ] 
 
