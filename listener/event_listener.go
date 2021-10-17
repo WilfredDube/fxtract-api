@@ -24,6 +24,7 @@ type EventProcessor struct {
 	MaterialService       service.MaterialService
 	ProjectService        service.ProjectService
 	UserService           service.UserService
+	Processor             *service.Processor
 	pdfService            service.PDFService
 }
 
@@ -99,16 +100,40 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 			log.Fatalf("%s: %s", "Failed to retrieve task data: ", err)
 		}
 
-		task.Status = entity.Complete
 		task.ProcessingTime = e.FeatureProps.FRETime
+		task.ProcessedCADFiles = append(task.ProcessedCADFiles, entity.Processed{ID: cadFile.ID, FileName: cadFile.FileName, ProcessType: entity.FeatureRecognition, Status: entity.Complete})
 
-		returedTask, err := p.TaskService.Update(*task)
+		if task.Quantity == (int64(len(task.ProcessedCADFiles))) {
+			task.Status = entity.Complete
+		}
+
+		returedTask, err := p.TaskService.Update(task)
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed to update data: ", err)
 		}
 
 		log.Printf("[ User: %s > TaskID: %s > Task status: %s]: CAD file (%s) features saved successfully!", e.UserID, returedTask.TaskID, returedTask.Status, e.CADFileID)
 		log.Printf("==========================================================")
+
+		if returedTask.Status == entity.Complete {
+			go func() {
+				p.Processor.TaskChannel <- returedTask
+			}()
+
+			go func() {
+				project, err := p.ProjectService.Find(cadFile.ProjectID.Hex())
+				if err != nil {
+					log.Fatalf("%s: %s", "Project does not exist ", err)
+				}
+
+				cadFiles, err := p.CadFileService.FindAll(project.ID.Hex())
+				if err != nil {
+					log.Fatalf("%s: %s", "Failed to retrieve cad files data: ", err)
+				}
+
+				p.Processor.CADFilesChannel <- service.CADFileResponse{UserID: e.UserID, CadFiles: cadFiles}
+			}()
+		}
 	case *contracts.ProcessPlanningComplete:
 		log.Printf("event %s created: %s", e.CADFileID, e.TaskID)
 		log.Printf("==========================================================")
@@ -164,7 +189,7 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 			log.Fatalf("%s: %s", "Failed: ", err)
 		}
 
-		// TODO: get the URL and upload the file to the cloud
+		// TODO: get & set the URL and upload the file to the cloud
 		fmt.Println(pdfTempPath)
 
 		// TODO: Delete the PDF after successful upload
@@ -189,16 +214,34 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 			log.Fatalf("%s: %s", "Failed to retrieve task data: ", err)
 		}
 
-		task.Status = entity.Complete
 		task.ProcessingTime = e.ProcessingPlan.EstimatedManufacturingTime
+		task.ProcessedCADFiles = append(task.ProcessedCADFiles, entity.Processed{ID: cadFile.ID, FileName: cadFile.FileName, ProcessType: entity.ProcessPlanning, Status: entity.Complete})
 
-		returedTask, err := p.TaskService.Update(*task)
+		if task.Quantity == (int64(len(task.ProcessedCADFiles))) {
+			task.Status = entity.Complete
+		}
+
+		returedTask, err := p.TaskService.Update(task)
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed to update data: ", err)
 		}
 
-		log.Printf("[ User: %s > TaskID: %s > Task status: %s]: CAD file (%s) processing plan saved successfully!", e.UserID, returedTask.TaskID, returedTask.Status, e.CADFileID)
-		log.Printf("==========================================================")
+		if returedTask.Status == entity.Complete {
+			go func() {
+				p.Processor.TaskChannel <- returedTask
+				log.Printf("[ User: %s > TaskID: %s > Task status: %s]: CAD file (%s) processing plan saved successfully!", e.UserID, returedTask.ID, returedTask.Status, e.CADFileID)
+				log.Printf("==========================================================")
+			}()
+
+			go func() {
+				cadFiles, err := p.CadFileService.FindAll(project.ID.Hex())
+				if err != nil {
+					log.Fatalf("%s: %s", "Failed to retrieve cad files data: ", err)
+				}
+
+				p.Processor.CADFilesChannel <- service.CADFileResponse{UserID: e.UserID, CadFiles: cadFiles}
+			}()
+		}
 	default:
 		log.Printf("unknown event type: %T", e)
 	}

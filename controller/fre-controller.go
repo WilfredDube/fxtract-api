@@ -17,6 +17,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -29,6 +30,12 @@ type freController struct {
 	taskService           service.TaskService
 	cache                 *redis.Client
 	eventEmitter          msgqueue.EventEmitter
+	processor             *service.Processor
+}
+
+type ProcessResult struct {
+	Message string `json:"message"`
+	TaskID  string `json:"task_id"`
 }
 
 // FREController -
@@ -41,7 +48,7 @@ type FREController interface {
 
 // NewFREController -
 func NewFREController(configuration configuration.ServiceConfig, cadService service.CadFileService, pPlanService service.ProcessingPlanService,
-	uService service.UserService, jwtService service.JWTService, taskService service.TaskService, cache *redis.Client, eventEmitter msgqueue.EventEmitter) FREController {
+	uService service.UserService, jwtService service.JWTService, taskService service.TaskService, cache *redis.Client, eventEmitter msgqueue.EventEmitter, processor *service.Processor) FREController {
 	return &freController{
 		userService:           uService,
 		cadFileService:        cadService,
@@ -51,6 +58,7 @@ func NewFREController(configuration configuration.ServiceConfig, cadService serv
 		taskService:           taskService,
 		cache:                 cache,
 		eventEmitter:          eventEmitter,
+		processor:             processor,
 	}
 }
 
@@ -139,7 +147,7 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 			if cadFile.FeatureProps.ProcessLevel == 0 {
 				res = helper.BuildResponse(true, "Feature recognition started", &helper.EmptyObj{})
 
-				task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
+				// task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
 				task, err := c.taskService.Create(&task)
 				if err != nil {
 					response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
@@ -152,7 +160,7 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 			} else if cadFile.FeatureProps.ProcessLevel == 1 {
 				res = helper.BuildResponse(true, "Process planning started", &helper.EmptyObj{})
 
-				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
+				// task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
 				task, err := c.taskService.Create(&task)
 				if err != nil {
 					response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
@@ -200,86 +208,121 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
 
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
-		var cadFilesToProcess []string
-		err := json.NewDecoder(r.Body).Decode(&cadFilesToProcess)
-		if err != nil {
+		var conn *websocket.Conn
+		if conn, ok = c.processor.Users[id]; !ok {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(response)
+			resp, err := json.Marshal(response)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			conn.WriteMessage(websocket.TextMessage, resp)
 			return
 		}
 
-		cadFiles, err := c.cadFileService.FindSelected(cadFilesToProcess)
-		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
-
-		var freNum = 0
-		var ppNum = 0
-
-		var task entity.Task
-		task.TaskID = primitive.NewObjectID()
-		task.UserID, err = primitive.ObjectIDFromHex(id)
-		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
-
-		task.ProcessType = []entity.ProcessType{}
-		task.Status = entity.Processing
-		task.CreatedAt = time.Now().Unix()
-
-		for _, cadFile := range cadFiles {
-			if cadFile.FeatureProps.ProcessLevel == 0 {
-				c.ExtractBendFeatures(id, task.TaskID.Hex(), &cadFile)
-				task.ProcessType = append(task.ProcessType, entity.FeatureRecognition)
-				freNum++
-			} else if cadFile.FeatureProps.ProcessLevel == 1 {
-				c.GenerateProcessingPlan(id, task.TaskID.Hex(), &cadFile)
-				task.ProcessType = append(task.ProcessType, entity.ProcessPlanning)
-				ppNum++
+		for {
+			messageType, p, err := conn.ReadMessage()
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				resp, err := json.Marshal(response)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				conn.WriteMessage(messageType, resp)
+				return
 			}
 
-			task.CADFiles = append(task.CADFiles, cadFile.FileName)
+			var cadFilesToProcess []string
+
+			err = json.Unmarshal(p, &cadFilesToProcess)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				resp, err := json.Marshal(response)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				conn.WriteMessage(messageType, resp)
+				return
+			}
+
+			log.Println("Processing: ", cadFilesToProcess)
+
+			cadFiles, err := c.cadFileService.FindSelected(cadFilesToProcess)
+			if err != nil {
+				response := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
+				resp, err := json.Marshal(response)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				conn.WriteMessage(messageType, resp)
+				return
+			}
+
+			var freNum = 0
+			var ppNum = 0
+
+			var task entity.Task
+			task.ID = primitive.NewObjectID()
+			task.TaskID = primitive.NewObjectID()
+			task.UserID, err = primitive.ObjectIDFromHex(id)
+			if err != nil {
+				response := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
+				resp, err := json.Marshal(response)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				conn.WriteMessage(messageType, resp)
+				return
+			}
+
+			task.ProcessedCADFiles = []entity.Processed{}
+			task.Status = entity.Processing
+			task.CreatedAt = time.Now().Unix()
+
+			for _, cadFile := range cadFiles {
+				if cadFile.FeatureProps.ProcessLevel == 0 {
+					c.ExtractBendFeatures(id, task.ID.Hex(), &cadFile)
+					freNum++
+				} else if cadFile.FeatureProps.ProcessLevel == 1 {
+					c.GenerateProcessingPlan(id, task.ID.Hex(), &cadFile)
+					ppNum++
+				}
+
+				task.CADFiles = append(task.CADFiles, cadFile.FileName)
+			}
+
+			resultString := ""
+			if ppNum > 0 && freNum > 0 {
+				task.Quantity = int64(ppNum) + int64(freNum)
+				resultString = fmt.Sprintf("%v feature recognition process(es) and %v process planning process(es) started", freNum, ppNum)
+			} else if ppNum > 0 {
+				task.Quantity = int64(ppNum)
+				resultString = fmt.Sprintf("%v process planning process(es) started", ppNum)
+			} else if freNum > 0 {
+				task.Quantity = int64(freNum)
+				resultString = fmt.Sprintf("%v feature recognition process(es) started", freNum)
+			}
+
+			_, err = c.taskService.Create(&task)
+			if err != nil {
+				response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
+				resp, err := json.Marshal(response)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				conn.WriteMessage(messageType, resp)
+				return
+			}
+
+			go persistence.ClearCache(TASKCACHE)
+
+			// response := helper.BuildResponse(true, resultString, &ProcessResult{Message: resultString, TaskID: resultTask.ID.Hex()})
+			response := helper.BuildResponse(true, resultString, &helper.EmptyObj{})
+			resp, err := json.Marshal(response)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			conn.WriteMessage(messageType, resp)
+			// return
 		}
-
-		resultString := ""
-		if ppNum > 0 && freNum > 0 {
-			task.Quantity = int64(ppNum) + int64(freNum)
-			resultString = fmt.Sprintf("%v feature recognition processes and %v process planning processes started", freNum, ppNum)
-		} else if ppNum > 0 {
-			task.Quantity = int64(ppNum)
-			resultString = fmt.Sprintf("%v process planning processes started", ppNum)
-		} else if freNum > 0 {
-			task.Quantity = int64(freNum)
-			resultString = fmt.Sprintf("%v feature recognition processes started", freNum)
-		}
-
-		_, err = c.taskService.Create(&task)
-		if err != nil {
-			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
-		go persistence.ClearCache(TASKCACHE)
-
-		res := helper.BuildResponse(true, resultString, &helper.EmptyObj{})
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
-		return
 	}
 }

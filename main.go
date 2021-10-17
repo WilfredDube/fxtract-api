@@ -99,7 +99,8 @@ func main() {
 	taskService := service.NewTaskService(taskRepo)
 	taskController := controller.NewTaskController(taskService, JWTService, redisCache)
 
-	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, redisCache, eventEmitter)
+	processorController := service.NewProcessor(JWTService)
+	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, redisCache, eventEmitter, processorController)
 
 	r := mux.NewRouter()
 
@@ -116,7 +117,8 @@ func main() {
 
 	// Feature recognition / processing plan API based on the CAD file's process level
 	r.HandleFunc("/api/user/projects/{pid}/files/{id}", freController.ProcessCADFile).Methods("POST").Queries("operation", "{process}")
-	r.HandleFunc("/api/user/projects/{pid}/files", freController.BatchProcessCADFiles).Methods("POST").Queries("operation", "{process}")
+	r.HandleFunc("/api/user/ws", processorController.Handler(freController.BatchProcessCADFiles)).Methods("GET") //.Methods("POST").Queries("operation", "{process}")
+	// r.HandleFunc("/api/user/ws", freController.BatchProcessCADFiles).Methods("GET") //.Methods("POST").Queries("operation", "{process}")
 	r.HandleFunc("/api/user/process/{id}", projectController.FindProcessPlan).Methods("GET")
 
 	r.HandleFunc("/api/user/materials", materialController.FindAll).Methods("GET")
@@ -170,6 +172,8 @@ func main() {
 	methodsObj := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	server := handlers.CORS(credentials, originsObj, methodsObj, headersObj)(r)
 
+	processorController.Start()
+
 	errs := make(chan error, 3)
 	go func() {
 		fmt.Printf("Listening on port: %v\n", config.RestfulEndPoint)
@@ -183,11 +187,11 @@ func main() {
 	}()
 
 	processor := listener.EventProcessor{EventListener: eventListener, CadFileService: cadFileService,
-		TaskService: taskService, ProcessingPlanService: processingPlanService, ToolService: toolService, MaterialService: materialService, ProjectService: projectService, UserService: userService}
+		TaskService: taskService, ProcessingPlanService: processingPlanService, ToolService: toolService, MaterialService: materialService, ProjectService: projectService, UserService: userService, Processor: processorController}
 	go processor.ProcessEvents("featureRecognitionComplete")
 
 	processPlanner := listener.EventProcessor{EventListener: processPlannerEventListener, CadFileService: cadFileService,
-		TaskService: taskService, ProcessingPlanService: processingPlanService, MaterialService: materialService, ProjectService: projectService, UserService: userService}
+		TaskService: taskService, ProcessingPlanService: processingPlanService, MaterialService: materialService, ProjectService: projectService, UserService: userService, Processor: processorController}
 	go processPlanner.ProcessEvents("processPlanningComplete")
 
 	fmt.Printf("Terminated %s\n", <-errs)
