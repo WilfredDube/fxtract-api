@@ -6,10 +6,10 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/garyburd/redigo v1.6.2 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/go-redis/redis/v8 v8.3.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1
+	github.com/gorilla/websocket v1.4.2
 	github.com/johnfercher/maroto v0.33.0
 	github.com/mazen160/go-random v0.0.0-20210308102632-d2b501c85c03
 	github.com/mitchellh/mapstructure v1.4.1
