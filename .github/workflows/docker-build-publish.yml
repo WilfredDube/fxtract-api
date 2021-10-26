@@ -23,4 +23,10 @@ jobs:
           dockerfile: Dockerfile
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+        env:
+          SENDER_EMAIL_ADDRESS: ${{ secrets.SENDER_EMAIL_ADDRESS }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          AZURE_BLOB_STORAGE_URL: ${{ secrets.AZURE_BLOB_STORAGE_URL }}
+          AZURE_BLOB_STORAGE_NAME: ${{ secrets.AZURE_BLOB_STORAGE_NAME }}
+          AZURE_BLOB_STORAGE_KEY: ${{ secrets.AZURE_BLOB_STORAGE_KEY }}
   
