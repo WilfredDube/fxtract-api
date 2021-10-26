@@ -416,7 +416,7 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 	// Send verification mail
 	from := os.Getenv("SENDER_EMAIL_ADDRESS") // TODO: save to config or env
 	if from == "" {
-		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", err.Error(), helper.EmptyObj{})
+		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", from, helper.EmptyObj{})
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
 		return
