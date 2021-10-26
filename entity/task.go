@@ -7,6 +7,7 @@ type Task struct {
 	ID                         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	TaskID                     primitive.ObjectID `json:"task_id,omitempty" bson:"task_id,omitempty"`
 	UserID                     primitive.ObjectID `json:"user_id,omitempty" bson:"user_id,omitempty"`
+	Description                string             `json:"description,omitempty" bson:"description,omitempty"`
 	CADFiles                   []string           `json:"cadfiles" bson:"cadfiles,omitempty" validate:"empty=false"`
 	ProcessedCADFiles          []Processed        `json:"processed_cadfiles" bson:"processed_cadfiles,omitempty" validate:"empty=false"`
 	Status                     Status             `json:"status" bson:"status" validate:"empty=false"`

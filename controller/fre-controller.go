@@ -293,14 +293,16 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 			resultString := ""
 			if ppNum > 0 && freNum > 0 {
 				task.Quantity = int64(ppNum) + int64(freNum)
-				resultString = fmt.Sprintf("%v feature recognition process(es) and %v process planning process(es) started", freNum, ppNum)
+				resultString = fmt.Sprintf("%d feature recognition process(es) and %d process planning process(es) started", freNum, ppNum)
 			} else if ppNum > 0 {
 				task.Quantity = int64(ppNum)
-				resultString = fmt.Sprintf("%v process planning process(es) started", ppNum)
+				resultString = fmt.Sprintf("%d process planning process(es) started", ppNum)
 			} else if freNum > 0 {
 				task.Quantity = int64(freNum)
-				resultString = fmt.Sprintf("%v feature recognition process(es) started", freNum)
+				resultString = fmt.Sprintf("%d feature recognition process(es) started", freNum)
 			}
+
+			task.Description = resultString
 
 			_, err = c.taskService.Create(&task)
 			if err != nil {

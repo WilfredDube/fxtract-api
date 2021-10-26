@@ -55,6 +55,7 @@ func (r *taskRepoConnection) Create(task *entity.Task) (*entity.Task, error) {
 			"_id":                          task.ID,
 			"task_id":                      task.TaskID,
 			"user_id":                      task.UserID,
+			"description":                  task.Description,
 			"cadfiles":                     task.CADFiles,
 			"processed_cadfiles":           task.ProcessedCADFiles,
 			"status":                       task.Status,
@@ -108,9 +109,9 @@ func (r *taskRepoConnection) Find(id string) (*entity.Task, error) {
 	taskID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
-			return nil, errors.Wrap(errors.New("User {id} incorrect"), "repository.User.Find")
+			return nil, errors.Wrap(errors.New("Task {id} incorrect"), "repository.Task.Find")
 		}
-		return nil, errors.Wrap(err, "repository.User.Find")
+		return nil, errors.Wrap(err, "repository.Task.Find")
 	}
 
 	filter := bson.M{"_id": taskID}
