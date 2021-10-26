@@ -22,7 +22,7 @@ type TaskRepository interface {
 	// Find a task by its id
 	Find(id string) (*entity.Task, error)
 
-	FindByUserID(id string) (*entity.Task, error)
+	FindByUserID(id string) ([]entity.Task, error)
 
 	// Find all tasks
 	FindAll() ([]entity.Task, error)
@@ -125,23 +125,23 @@ func (r *taskRepoConnection) Find(id string) (*entity.Task, error) {
 	return task, nil
 }
 
-func (r *taskRepoConnection) FindByUserID(id string) (*entity.Task, error) {
+func (r *taskRepoConnection) FindByUserID(id string) ([]entity.Task, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), r.connection.Timeout)
 	defer cancel()
 
-	task := &entity.Task{}
+	tasks := &[]entity.Task{}
 	collection := r.connection.Client.Database(r.connection.Database).Collection(taskCollectionName)
 
 	userID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
-			return nil, errors.Wrap(errors.New("User {id} incorrect"), "repository.User.Find")
+			return nil, errors.Wrap(errors.New("Task {id} incorrect"), "repository.Task.Find")
 		}
-		return nil, errors.Wrap(err, "repository.User.Find")
+		return nil, errors.Wrap(err, "repository.Task.Find")
 	}
 
 	filter := bson.M{"user_id": userID}
-	err = collection.FindOne(ctx, filter).Decode(&task)
+	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
 			return nil, errors.Wrap(errors.New("Task not found"), "repository.Task.FindByUserID")
@@ -149,7 +149,10 @@ func (r *taskRepoConnection) FindByUserID(id string) (*entity.Task, error) {
 		return nil, errors.Wrap(err, "repository.Task.FindByUserID")
 	}
 
-	return task, nil
+	cursor.All(ctx, tasks)
+	defer cursor.Close(ctx)
+
+	return *tasks, nil
 }
 
 func (r *taskRepoConnection) FindAll() ([]entity.Task, error) {

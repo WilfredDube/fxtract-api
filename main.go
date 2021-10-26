@@ -158,8 +158,7 @@ func main() {
 	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
 
 	// Tasks
-	r.HandleFunc("/api/admin/task", middleware.CheckAdminRole(JWTService, taskController.FindAll)).Methods("GET")
-	r.HandleFunc("/api/admin/task/{id}", middleware.CheckAdminRole(JWTService, taskController.Find)).Methods("GET")
+	r.HandleFunc("/api/user/tasks", taskController.FindByUserID).Methods("GET")
 
 	// processes: type, status
 

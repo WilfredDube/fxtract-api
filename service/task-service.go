@@ -14,7 +14,7 @@ type TaskService interface {
 	Create(task *entity.Task) (*entity.Task, error)
 	Update(task *entity.Task) (*entity.Task, error)
 	Find(id string) (*entity.Task, error)
-	FindByUserID(id string) (*entity.Task, error)
+	FindByUserID(id string) ([]entity.Task, error)
 	FindAll() ([]entity.Task, error)
 }
 
@@ -38,7 +38,7 @@ func (*taskService) Find(id string) (*entity.Task, error) {
 	return taskRepo.Find(id)
 }
 
-func (*taskService) FindByUserID(id string) (*entity.Task, error) {
+func (*taskService) FindByUserID(id string) ([]entity.Task, error) {
 	return taskRepo.FindByUserID(id)
 }
 
