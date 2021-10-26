@@ -57,6 +57,7 @@ func (r *processingPlanRepoConnection) Create(processingPlan *entity.ProcessingP
 			"_id":                          processingPlan.ID,
 			"cadfile_id":                   processingPlan.CADFileID,
 			"filename":                     processingPlan.FileName,
+			"pdf_url":                      processingPlan.PdfURL,
 			"project_title":                processingPlan.ProjectTitle,
 			"engineer":                     processingPlan.Engineer,
 			"moderator":                    processingPlan.Moderator,
