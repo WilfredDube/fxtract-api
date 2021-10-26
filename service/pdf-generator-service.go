@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -19,7 +20,7 @@ const (
 )
 
 type PDFService interface {
-	GeneratePDF(processingPlan *entity.ProcessingPlan) (string, error)
+	GeneratePDF(processingPlan *entity.ProcessingPlan) (bytes.Buffer, error)
 	getSmallContent(configMap map[int]entity.BendFeature, bendingSequence []entity.BendingSequence) ([]string, [][]string)
 }
 
@@ -39,7 +40,7 @@ func NewPDFService() PDFService {
 	return &pdfService{}
 }
 
-func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (string, error) {
+func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (bytes.Buffer, error) {
 	confMap := map[int]entity.BendFeature{}
 	for _, v := range processingPlan.BendFeatures {
 		confMap[int(v.BendID)] = v
@@ -91,12 +92,12 @@ func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (string,
 			})
 		})
 
-		layout := "02 / 01 / 2006"
+		layout := "02  October 2006"
 		t := time.Unix(processingPlan.CreatedAt, 0)
 
 		m.Row(10, func() {
 			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Date:%50v.", t.Format(layout)), props.Text{
+				m.Text(fmt.Sprintf("Date:%54v.", t.Format(layout)), props.Text{
 					Top:   2,
 					Style: consts.Bold,
 				})
@@ -263,16 +264,20 @@ func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (string,
 	})
 	m.Line(0.2)
 
-	tempFilePath := directory + "/" + processingPlan.ID.Hex() + ".pdf"
-	err := m.OutputFileAndClose(tempFilePath)
+	ret, err := m.Output()
 	if err != nil {
-		return "", fmt.Errorf("could not generate PDF: %v", err)
+		return *bytes.NewBuffer([]byte{}), fmt.Errorf("could not generate PDF: %v", err)
 	}
 
-	// TODO: generate and return the URL to the blob file
-	return tempFilePath, nil
-}
+	// tempFilePath := directory + "/" + processingPlan.ID.Hex() + ".pdf"
+	// err := m.OutputFileAndClose(tempFilePath)
+	// if err != nil {
+	// 	return *bytes.NewBuffer([]byte{}), fmt.Errorf("could not generate PDF: %v", err)
+	// }
 
+	// TODO: generate and return the URL to the blob file
+	return ret, nil
+}
 func (p *pdfService) getSmallContent(configMap map[int]entity.BendFeature, bendingSequence []entity.BendingSequence) ([]string, [][]string) {
 	header := []string{"Op", "Bend ID", "Bend Angle", "Length", "Radius", "Direction", "Tool"}
 
