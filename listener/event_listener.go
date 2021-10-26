@@ -184,15 +184,20 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		processingPlan.CreatedAt = time.Now().Unix()
 
 		// TODO: create goroutine to generate and upload pdf
-		pdfTempPath, err := p.pdfService.GeneratePDF(&processingPlan)
+		pdfBuff, err := p.pdfService.GeneratePDF(&processingPlan)
+		if err != nil {
+			log.Fatalf("%s: %s", "Failed: ", err)
+		}
+
+		pdfBlob := service.NewAzureBlobService()
+		filename := processingPlan.ID.Hex() + ".pdf"
+		_, url, err := pdfBlob.UploadFromBuffer(&pdfBuff, filename)
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed: ", err)
 		}
 
 		// TODO: get & set the URL and upload the file to the cloud
-		fmt.Println(pdfTempPath)
-
-		// TODO: Delete the PDF after successful upload
+		processingPlan.PdfURL = url
 
 		_, err = p.ProcessingPlanService.Create(&processingPlan)
 		if err != nil {
@@ -207,6 +212,7 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 
 		PROJECTCADFILES := controller.CADFILECACHE + cadFile.ProjectID.Hex()
 		go persistence.ClearCache(cadFile.ProjectID.Hex())
+		go persistence.ClearCache(processingPlan.ID.Hex())
 		go persistence.ClearCache(PROJECTCADFILES)
 
 		task, err := p.TaskService.Find(e.TaskID)

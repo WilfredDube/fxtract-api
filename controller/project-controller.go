@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -413,9 +413,10 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-		sharedFolder := "/home/unbusy/Projects/fxtract/fxtract-api/uploads/"
+		// sharedFolder := "/home/unbusy/Projects/fxtract/fxtract-api/uploads/"
 
-		projectFolder := sharedFolder + project.OwnerID.Hex() + "/" + project.ID.Hex()
+		// projectFolder := sharedFolder + project.OwnerID.Hex() + "/" + project.ID.Hex()
+		projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
 
 		uploadedFiles, err := c.uploadHandler(r, projectFolder, id)
 		if err != nil {
@@ -516,30 +517,39 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 			processed = true
 		}
 
-		f, err := os.Create(fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename)))
+		// Upload File to blob storage
+		log.Println("Starting upload....")
+		blobService := service.NewAzureBlobService()
+		resp, blobURL, err := blobService.UploadFromFile(&file, fileHeader.Filename, projectFolder, newName)
 		if err != nil {
-			return nil, err
+			log.Fatalln("Not able to connect to storage account")
 		}
 
-		defer f.Close()
+		log.Println("Blob upload complete | Response code: ", resp.Response().StatusCode)
+		// f, err := os.Create(fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename)))
+		// if err != nil {
+		// 	return nil, err
+		// }
 
-		_, err = io.Copy(f, file)
-		if err != nil {
-			return nil, err
-		}
+		// defer f.Close()
+
+		// _, err = io.Copy(f, file)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		// insert cad file file metadata into database
 		var cadFile entity.CADFile
 
 		if !processed {
-			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(f.Name()))
+			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(blobURL)) //f.Name()
 
 			cadFile.ID = primitive.NewObjectID()
 			cadFile.FileName = filename + ".stp"
 			if ext == ".stp" || ext == ".step" {
-				cadFile.StepURL = f.Name()
+				cadFile.StepURL = blobURL //f.Name()
 			} else {
-				cadFile.ObjpURL = f.Name()
+				cadFile.ObjpURL = blobURL //f.Name()
 			}
 
 			cadFile.Material = material
@@ -558,9 +568,9 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 			cadFile = fileCache[fl]
 
 			if ext == ".stp" || ext == ".step" {
-				cadFile.StepURL = f.Name()
+				cadFile.StepURL = blobURL //f.Name()
 			} else {
-				cadFile.ObjpURL = f.Name()
+				cadFile.ObjpURL = blobURL //f.Name()
 			}
 
 			_, err := c.cadFileService.Update(cadFile)
