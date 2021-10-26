@@ -82,7 +82,14 @@ func (p *Processor) Run() {
 
 		case task := <-p.TaskChannel:
 			if conn, ok := p.Users[task.UserID.Hex()]; ok {
-				response := helper.BuildResponse(true, "File processing complete", task)
+				// response := helper.BuildResponse(true, "File processing complete", task)
+				response := helper.Response{
+					Status:  true,
+					Message: "File processing complete",
+					Type:    "task",
+					Errors:  nil,
+					Data:    task,
+				}
 				resp, err := json.Marshal(response)
 				if err != nil {
 					log.Println(err.Error())
@@ -92,7 +99,14 @@ func (p *Processor) Run() {
 			}
 		case cadFilesResponse := <-p.CADFilesChannel:
 			if conn, ok := p.Users[cadFilesResponse.UserID]; ok {
-				response := helper.BuildResponse(true, "files", cadFilesResponse.CadFiles)
+				// response := helper.BuildResponse(true, "files", cadFilesResponse.CadFiles)
+				response := helper.Response{
+					Status:  true,
+					Message: "File processing complete",
+					Type:    "files",
+					Errors:  nil,
+					Data:    cadFilesResponse.CadFiles,
+				}
 				resp, err := json.Marshal(response)
 				if err != nil {
 					log.Println(err.Error())

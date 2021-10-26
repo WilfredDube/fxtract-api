@@ -316,7 +316,14 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 			go persistence.ClearCache(TASKCACHE)
 
 			// response := helper.BuildResponse(true, resultString, &ProcessResult{Message: resultString, TaskID: resultTask.ID.Hex()})
-			response := helper.BuildResponse(true, resultString, &helper.EmptyObj{})
+			// response := helper.BuildResponse(true, resultString, &helper.EmptyObj{})
+			response := helper.Response{
+				Status:  true,
+				Message: resultString,
+				Type:    "init",
+				Errors:  nil,
+				Data:    &helper.EmptyObj{},
+			}
 			resp, err := json.Marshal(response)
 			if err != nil {
 				log.Println(err.Error())

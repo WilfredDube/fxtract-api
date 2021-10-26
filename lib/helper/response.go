@@ -6,6 +6,7 @@ import "strings"
 type Response struct {
 	Status  bool        `json:"status"`
 	Message string      `json:"message"`
+	Type    string      `json:"type"`
 	Errors  interface{} `json:"errors"`
 	Data    interface{} `json:"data"`
 }
