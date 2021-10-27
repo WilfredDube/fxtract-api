@@ -63,9 +63,9 @@ func (a *azureBlobService) UploadFromBuffer(buf *bytes.Buffer, filename string) 
 	return resp, bURL.String(), nil
 }
 
-func (a *azureBlobService) UploadFromFile(file *multipart.File, path, folder string, filename int64) (azblob.CommonResponse, string, error) {
+func (a *azureBlobService) UploadFromFile(file *multipart.File, filename string) (azblob.CommonResponse, string, error) {
 	cURL := a.serviceURL.NewContainerURL(cadFileContainer)
-	bURL := cURL.NewBlockBlobURL(fmt.Sprintf(folder+"/%d%s", filename, filepath.Ext(path)))
+	bURL := cURL.NewBlockBlobURL(filename)
 
 	resp, err := azblob.UploadStreamToBlockBlob(context.Background(), *file, bURL, azblob.UploadStreamToBlockBlobOptions{})
 	if err != nil {
