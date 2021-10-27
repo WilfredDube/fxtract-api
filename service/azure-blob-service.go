@@ -8,7 +8,8 @@ import (
 	"mime/multipart"
 	"net/url"
 	"os"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
@@ -16,11 +17,17 @@ import (
 const (
 	cadFileContainer = "fxtcadfiles"
 	pdfContainer     = "fxtpdfs"
+
+	PDFFILE = 0
+	CADFILE = 1
 )
+
+type FILETYPE int
 
 type AzureBlobService interface {
 	UploadFromBuffer(b *bytes.Buffer, filename string) (azblob.CommonResponse, string, error)
-	UploadFromFile(file *multipart.File, path, folder string, filename int64) (azblob.CommonResponse, string, error)
+	UploadFromFile(file *multipart.File, filename string) (azblob.CommonResponse, string, error)
+	Delete(url string, ftype FILETYPE) (*azblob.BlobDeleteResponse, error)
 }
 
 type azureBlobService struct {
@@ -73,4 +80,28 @@ func (a *azureBlobService) UploadFromFile(file *multipart.File, filename string)
 	}
 
 	return resp, bURL.String(), nil
+}
+
+func (a *azureBlobService) Delete(fileURL string, ftype FILETYPE) (*azblob.BlobDeleteResponse, error) {
+	var cURL azblob.ContainerURL
+	var bURL azblob.BlockBlobURL
+
+	if ftype == CADFILE {
+		cURL = a.serviceURL.NewContainerURL(cadFileContainer)
+
+		link, _ := url.Parse(fileURL)
+		urlParts := strings.Split(link.Path, "/")
+
+		bURL = cURL.NewBlockBlobURL(fmt.Sprintf("%s/%s/%s", urlParts[2], urlParts[3], urlParts[4]))
+	} else {
+		cURL = a.serviceURL.NewContainerURL(pdfContainer)
+		bURL = cURL.NewBlockBlobURL(path.Base(fileURL))
+	}
+
+	resp, err := bURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude, azblob.BlobAccessConditions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
