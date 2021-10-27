@@ -413,12 +413,8 @@ func (c *controller) Upload(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-		// sharedFolder := "/home/unbusy/Projects/fxtract/fxtract-api/uploads/"
 
-		// projectFolder := sharedFolder + project.OwnerID.Hex() + "/" + project.ID.Hex()
-		projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
-
-		uploadedFiles, err := c.uploadHandler(r, projectFolder, id)
+		uploadedFiles, err := c.uploadHandler(r, project.ID.Hex(), id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Upload error", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusInternalServerError)
@@ -520,7 +516,8 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		// Upload File to blob storage
 		log.Println("Starting upload....")
 		blobService := service.NewAzureBlobService()
-		resp, blobURL, err := blobService.UploadFromFile(&file, fileHeader.Filename, projectFolder, newName)
+		blobname := fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename))
+		resp, blobURL, err := blobService.UploadFromFile(&file, blobname)
 		if err != nil {
 			log.Fatalln("Not able to connect to storage account")
 		}
