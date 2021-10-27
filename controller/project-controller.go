@@ -357,9 +357,40 @@ func (c *controller) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO: delete project folder
-		// projectFolder := project.OwnerID.Hex() + "/" + project.ID.Hex()
-		// helper.DeleteFolder(projectFolder)
+		cadFiles, err := c.cadFileService.FindAll(project.ID.Hex())
+		if err != nil {
+			res := helper.BuildErrorResponse("Cadfiles not found", err.Error(), helper.EmptyObj{})
+			log.Println(res)
+		}
+
+		cloudService := service.NewAzureBlobService()
+
+		if len(cadFiles) != 0 {
+			for _, file := range cadFiles {
+				cloudService.Delete(file.ObjpURL, service.CADFILE)
+				cloudService.Delete(file.StepURL, service.CADFILE)
+
+				if file.FeatureProps.ProcessLevel == 2 {
+					processingPlan, err := c.processingPlanService.Find(file.ID.Hex())
+					if err != nil {
+						res := helper.BuildErrorResponse("Processing plan not found", err.Error(), helper.EmptyObj{})
+						w.WriteHeader(http.StatusNotFound)
+						json.NewEncoder(w).Encode(res)
+						return
+					}
+
+					cloudService.Delete(processingPlan.PdfURL, service.PDFFILE)
+
+					_, err = c.processingPlanService.Delete(id)
+					if err != nil {
+						res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
+						w.WriteHeader(http.StatusNotFound)
+						json.NewEncoder(w).Encode(res)
+						return
+					}
+				}
+			}
+		}
 
 		c.cadFileService.CascadeDelete(project.ID.Hex())
 
@@ -732,13 +763,46 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = c.processingPlanService.Delete(id)
+		cloudService := service.NewAzureBlobService()
+
+		if cadFile.FeatureProps.ProcessLevel == 2 {
+			processingPlan, err := c.processingPlanService.Find(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			cloudService.Delete(processingPlan.PdfURL, service.PDFFILE)
+
+			_, err = c.processingPlanService.Delete(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+		}
+
+		// Delete blob
+		log.Println("Deleting from cloud...")
+		_, err = cloudService.Delete(cadFile.ObjpURL, service.CADFILE)
 		if err != nil {
-			res := helper.BuildErrorResponse("Processing plan deletion failed", err.Error(), helper.EmptyObj{})
+			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
+
+		resp, err := cloudService.Delete(cadFile.StepURL, service.CADFILE)
+		if err != nil {
+			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+		log.Println("Done...: ", resp.StatusCode())
 
 		deleteCount, err := c.cadFileService.Delete(id)
 		if err != nil {
@@ -754,10 +818,6 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-
-		// Delete blob
-		// helper.DeleteFile(cadFile.StepURL)
-		// helper.DeleteFile(cadFile.ObjpURL)
 
 		PROJECTCADFILES := CADFILECACHE + cadFile.ProjectID.Hex()
 		go persistence.ClearCache(id)
