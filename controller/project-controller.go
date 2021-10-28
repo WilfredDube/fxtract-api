@@ -774,7 +774,13 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			cloudService.Delete(processingPlan.PdfURL, service.PDFFILE)
+			_, err = cloudService.Delete(processingPlan.PdfURL, service.PDFFILE)
+			if err != nil {
+				res := helper.BuildErrorResponse("Cloud process plan deletion failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
 
 			_, err = c.processingPlanService.Delete(id)
 			if err != nil {

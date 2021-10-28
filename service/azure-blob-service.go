@@ -8,7 +8,6 @@ import (
 	"mime/multipart"
 	"net/url"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -84,19 +83,17 @@ func (a *azureBlobService) UploadFromFile(file *multipart.File, filename string)
 
 func (a *azureBlobService) Delete(fileURL string, ftype FILETYPE) (*azblob.BlobDeleteResponse, error) {
 	var cURL azblob.ContainerURL
-	var bURL azblob.BlockBlobURL
 
 	if ftype == CADFILE {
 		cURL = a.serviceURL.NewContainerURL(cadFileContainer)
-
-		link, _ := url.Parse(fileURL)
-		urlParts := strings.Split(link.Path, "/")
-
-		bURL = cURL.NewBlockBlobURL(fmt.Sprintf("%s/%s/%s", urlParts[2], urlParts[3], urlParts[4]))
 	} else {
 		cURL = a.serviceURL.NewContainerURL(pdfContainer)
-		bURL = cURL.NewBlockBlobURL(path.Base(fileURL))
 	}
+
+	link, _ := url.Parse(fileURL)
+	urlParts := strings.Split(link.Path, "/")
+
+	bURL := cURL.NewBlockBlobURL(fmt.Sprintf("%s/%s", urlParts[2], urlParts[3]))
 
 	resp, err := bURL.Delete(context.Background(), azblob.DeleteSnapshotsOptionInclude, azblob.BlobAccessConditions{})
 	if err != nil {
