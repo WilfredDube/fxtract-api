@@ -51,6 +51,8 @@ func (c *taskController) Find(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: fix cache for all methods
+
 	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		params := mux.Vars(r)
 		id := params["id"]

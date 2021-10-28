@@ -3,7 +3,6 @@ package controller
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -149,7 +148,7 @@ func GenerateRandomString(length int) string {
 	charset := random.ASCIICharacters
 	code, err := random.Random(length, charset, true)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	return code
 }
@@ -197,7 +196,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 		user.UserRole = entity.GENERAL_USER
 	}
 
-	from := os.Getenv("SENDER_EMAIL_ADDRESS") // TODO: save to config or env
+	from := os.Getenv("SENDER_EMAIL_ADDRESS")
 	if from == "" {
 		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusInternalServerError)
@@ -208,7 +207,7 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	_, err = c.authService.CreateUser(*user)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed user registration", "User registration failed", helper.EmptyObj{})
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -225,7 +224,6 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 	mailReq := c.mailService.NewMail(from, to, subject, mailType, mailData)
 	err = c.mailService.SendMail(mailReq)
 	if err != nil {
-		log.Println("unable to send mail", err)
 		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
@@ -247,9 +245,6 @@ func (c *authController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO : create azure folder for user
-	// helper.CreateFolder(user.ID.Hex(), false)
-
 	response := helper.BuildResponse(true, "User created successfully", helper.EmptyObj{})
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
@@ -269,7 +264,7 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 
 	authResult, err := c.authService.VerifyCredential(user.Email, user.Password)
 	if err != nil {
-		response := helper.BuildErrorResponse("Please check again your credential", "Invalid Credential", helper.EmptyObj{})
+		response := helper.BuildErrorResponse("Please check again your credential", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(response)
 		return
@@ -315,7 +310,6 @@ func (c *authController) Logout(w http.ResponseWriter, r *http.Request) {
 func (c *authController) VerifyMail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	log.Println("verifying the confimation code")
 	verificationMsg := &verificationMessage{}
 
 	err := json.NewDecoder(r.Body).Decode(verificationMsg)
@@ -348,26 +342,25 @@ func (c *authController) VerifyMail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// delete the VerificationData from db
+	_, err = c.verification.Delete(actualVerificationData.ID.Hex())
+	if err != nil {
+		response := helper.BuildErrorResponse("Unable to verify mail. Please try again later", err.Error(), helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+	}
+
 	// correct code, update user status to verified.
 	err = c.authService.UpdateUserVerificationStatus(verificationData.Email, true)
 	if err != nil {
 		response := helper.BuildErrorResponse("Unable to verify mail. Please try again later", err.Error(), helper.EmptyObj{})
-		log.Println("unable to set user verification status to true")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// delete the VerificationData from db
-	_, err = c.verification.Delete(actualVerificationData.ID.Hex())
-	if err != nil {
-		log.Println("unable to delete the verification data", "error", err)
-	}
-
-	log.Println("user mail verification succeeded")
-
 	response := helper.BuildResponse(true, "OK!", "Mail Verification succeeded")
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -376,10 +369,10 @@ func (c *authController) verify(actualVerificationData *entity.Verification, ver
 
 	// check for expiration
 	if timeT.Before(time.Now()) {
-		log.Println("verification data provided is expired")
+		log.Println()
 		_, err := c.verification.Delete(actualVerificationData.ID.Hex())
 		if err != nil {
-			log.Println("unable to delete the verification data", "error", err)
+			return false, errors.New("verification data provided is expired")
 		}
 
 		return false, errors.New("confirmation code has expired. Please try generating a new code")
@@ -414,7 +407,7 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 	}
 
 	// Send verification mail
-	from := os.Getenv("SENDER_EMAIL_ADDRESS") // TODO: save to config or env
+	from := os.Getenv("SENDER_EMAIL_ADDRESS")
 	if from == "" {
 		response := helper.BuildErrorResponse("Failed to process request. Please try again later.", from, helper.EmptyObj{})
 		w.WriteHeader(http.StatusInternalServerError)
@@ -433,7 +426,6 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 	mailReq := c.mailService.NewMail(from, to, subject, mailType, mailData)
 	err = c.mailService.SendMail(mailReq)
 	if err != nil {
-		log.Println("unable to send mail", err)
 		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
@@ -463,7 +455,6 @@ func (c *authController) GeneratePassResetCode(w http.ResponseWriter, r *http.Re
 func (c *authController) VerifyPasswordReset(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	log.Println("verifying the confimation code")
 	verificationMsg := &verificationMessage{}
 
 	err := json.NewDecoder(r.Body).Decode(verificationMsg)
@@ -497,14 +488,13 @@ func (c *authController) VerifyPasswordReset(w http.ResponseWriter, r *http.Requ
 	}
 
 	response := helper.BuildResponse(true, "OK!", actualVerificationData.Code)
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 
 func (c *authController) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	log.Println("verifying the confimation code")
 	passwdReq := &passwordRequest{}
 
 	err := json.NewDecoder(r.Body).Decode(passwdReq)
@@ -557,6 +547,15 @@ func (c *authController) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword := string(hash)
 
+	// delete the VerificationData from db
+	_, err = c.verification.Delete(verificationData.ID.Hex())
+	if err != nil {
+		response := helper.BuildErrorResponse("Failed", "Failed to change the password. Try again later", helper.EmptyObj{})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	err = c.authService.UpdateUserPassword(passwdReq.Email, hashedPassword)
 	if err != nil {
 		response := helper.BuildErrorResponse("Unable to verify mail. Please try again later", err.Error(), helper.EmptyObj{})
@@ -566,15 +565,7 @@ func (c *authController) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// delete the VerificationData from db
-	_, err = c.verification.Delete(verificationData.ID.Hex())
-	if err != nil {
-		log.Println("unable to delete the verification data", "error", err)
-	}
-
-	log.Println("password changed successfully")
-
 	response := helper.BuildResponse(true, "OK!", "Password change successfully")
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }

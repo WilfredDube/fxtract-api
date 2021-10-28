@@ -36,7 +36,6 @@ func NewPDFService() PDFService {
 		}
 	}
 
-	// TODO: connect to the cloud via seperate cloud service
 	return &pdfService{}
 }
 
@@ -48,7 +47,6 @@ func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (bytes.B
 
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
-	// m.SetBorder(true)
 
 	headerSmall, smallContent := p.getSmallContent(confMap, processingPlan.BendingSequences)
 
@@ -275,7 +273,6 @@ func (p *pdfService) GeneratePDF(processingPlan *entity.ProcessingPlan) (bytes.B
 	// 	return *bytes.NewBuffer([]byte{}), fmt.Errorf("could not generate PDF: %v", err)
 	// }
 
-	// TODO: generate and return the URL to the blob file
 	return ret, nil
 }
 func (p *pdfService) getSmallContent(configMap map[int]entity.BendFeature, bendingSequence []entity.BendingSequence) ([]string, [][]string) {

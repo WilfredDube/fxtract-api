@@ -85,7 +85,7 @@ func main() {
 	projectService := service.NewProjectService(projectRepo)
 	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService, redisCache)
 
-	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService)
+	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService, processingPlanService)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
@@ -158,7 +158,9 @@ func main() {
 	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
 
 	// Tasks
+	r.HandleFunc("/api/admin/tasks", middleware.CheckAdminRole(JWTService, taskController.FindAll)).Methods("GET")
 	r.HandleFunc("/api/user/tasks", taskController.FindByUserID).Methods("GET")
+	r.HandleFunc("/api/tasks/{id}", taskController.Find).Methods("GET")
 
 	// processes: type, status
 
@@ -177,6 +179,11 @@ func main() {
 	go func() {
 		fmt.Printf("Listening on port: %v\n", config.RestfulEndPoint)
 		errs <- http.ListenAndServe(config.RestfulEndPoint, server)
+	}()
+
+	go func() {
+		fmt.Printf("Listening on port: %v\n", config.RestfulTLSEndPoint)
+		errs <- http.ListenAndServeTLS(config.RestfulTLSEndPoint, "cert/cert.pem", "cert/key.pem", server)
 	}()
 
 	go func() {

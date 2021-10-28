@@ -72,9 +72,6 @@ func (c *freController) ExtractBendFeatures(UserID string, TaskID string, cadFil
 	}
 
 	c.eventEmitter.Emit(request)
-
-	fmt.Println("Publish successful!")
-	log.Printf("*********************************************************************")
 }
 
 func (c *freController) GenerateProcessingPlan(UserID string, TaskID string, cadFile *entity.CADFile) {
@@ -89,8 +86,6 @@ func (c *freController) GenerateProcessingPlan(UserID string, TaskID string, cad
 	}
 
 	c.eventEmitter.Emit(request)
-	fmt.Println("Publishing successful!")
-	log.Printf("*********************************************************************")
 }
 
 // ProcessCADFile -
@@ -107,13 +102,6 @@ func (c *freController) ProcessCADFile(w http.ResponseWriter, r *http.Request) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := claims["user_id"].(string)
-
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
 
 		params := mux.Vars(r)
 		cadFileID := params["id"]
@@ -244,8 +232,6 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 				return
 			}
 
-			log.Println("Processing: ", cadFilesToProcess)
-
 			cadFiles, err := c.cadFileService.FindSelected(cadFilesToProcess)
 			if err != nil {
 				response := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
@@ -317,8 +303,6 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 
 			go persistence.ClearCache(TASKCACHE)
 
-			// response := helper.BuildResponse(true, resultString, &ProcessResult{Message: resultString, TaskID: resultTask.ID.Hex()})
-			// response := helper.BuildResponse(true, resultString, &helper.EmptyObj{})
 			response := helper.Response{
 				Status:  true,
 				Message: resultString,
@@ -331,7 +315,6 @@ func (c *freController) BatchProcessCADFiles(w http.ResponseWriter, r *http.Requ
 				log.Println(err.Error())
 			}
 			conn.WriteMessage(messageType, resp)
-			// return
 		}
 	}
 }

@@ -86,7 +86,6 @@ func (a *amqpEventEmitter) Emit(event msgqueue.Event) error {
 
 	defer channel.Close()
 
-	// TODO: Alternatives to JSON? Msgpack or Protobuf, maybe?
 	jsonBody, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("could not JSON-serialize event: %s", err)

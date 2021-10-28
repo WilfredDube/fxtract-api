@@ -65,7 +65,7 @@ func (c *toolController) AddTool(w http.ResponseWriter, r *http.Request) {
 		err := json.NewDecoder(r.Body).Decode(tool)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
@@ -73,7 +73,7 @@ func (c *toolController) AddTool(w http.ResponseWriter, r *http.Request) {
 		result, _ := c.toolService.Find(tool.ToolID)
 		if result != nil {
 			response := helper.BuildErrorResponse("Tool already exist", "Duplicate request", helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
@@ -81,7 +81,7 @@ func (c *toolController) AddTool(w http.ResponseWriter, r *http.Request) {
 		err = c.toolService.Validate(tool)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}

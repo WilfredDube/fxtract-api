@@ -80,13 +80,6 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		id := claims["user_id"].(string)
 		OwnerID, _ := primitive.ObjectIDFromHex(id)
 
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
 		project := &entity.Project{}
 		err := json.NewDecoder(r.Body).Decode(project)
 		if err != nil {
@@ -131,7 +124,6 @@ func (c *controller) AddProject(w http.ResponseWriter, r *http.Request) {
 		go persistence.ClearCache(project.ID.Hex())
 		go persistence.ClearCache(PROJECTOWNERID)
 
-		// res := helper.BuildResponse(true, "OK", response)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
 		return
@@ -160,13 +152,6 @@ func (c *controller) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		id := claims["user_id"].(string)
 		OwnerID, _ := primitive.ObjectIDFromHex(id)
 
-		if _, err := c.userService.Profile(id); err != nil {
-			response := helper.BuildErrorResponse("Invalid token", "User does not exist", helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
 		project := &entity.Project{}
 		err := json.NewDecoder(r.Body).Decode(project)
 		if err != nil {
@@ -188,7 +173,6 @@ func (c *controller) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		go persistence.ClearCache(project.ID.Hex())
 		go persistence.ClearCache(PROJECTOWNERID)
 
-		// res := helper.BuildResponse(true, "OK", response)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
 		return
@@ -545,39 +529,25 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		}
 
 		// Upload File to blob storage
-		log.Println("Starting upload....")
 		blobService := service.NewAzureBlobService()
 		blobname := fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename))
-		resp, blobURL, err := blobService.UploadFromFile(&file, blobname)
+		_, blobURL, err := blobService.UploadFromFile(&file, blobname)
 		if err != nil {
 			log.Fatalln("Not able to connect to storage account")
 		}
-
-		log.Println("Blob upload complete | Response code: ", resp.Response().StatusCode)
-		// f, err := os.Create(fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename)))
-		// if err != nil {
-		// 	return nil, err
-		// }
-
-		// defer f.Close()
-
-		// _, err = io.Copy(f, file)
-		// if err != nil {
-		// 	return nil, err
-		// }
 
 		// insert cad file file metadata into database
 		var cadFile entity.CADFile
 
 		if !processed {
-			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(blobURL)) //f.Name()
+			tempCache[filename] = helper.FileNameWithoutExtSlice(filepath.Base(blobURL))
 
 			cadFile.ID = primitive.NewObjectID()
 			cadFile.FileName = filename + ".stp"
 			if ext == ".stp" || ext == ".step" {
-				cadFile.StepURL = blobURL //f.Name()
+				cadFile.StepURL = blobURL
 			} else {
-				cadFile.ObjpURL = blobURL //f.Name()
+				cadFile.ObjpURL = blobURL
 			}
 
 			cadFile.Material = material
@@ -589,16 +559,16 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 
 			_, err := c.cadFileService.Create(&cadFile)
 			if err != nil {
-				return nil, err // error updloading file failed
+				return nil, err
 			}
 		} else {
 			fl := tempCache[filename]
 			cadFile = fileCache[fl]
 
 			if ext == ".stp" || ext == ".step" {
-				cadFile.StepURL = blobURL //f.Name()
+				cadFile.StepURL = blobURL
 			} else {
-				cadFile.ObjpURL = blobURL //f.Name()
+				cadFile.ObjpURL = blobURL
 			}
 
 			_, err := c.cadFileService.Update(cadFile)
@@ -792,7 +762,6 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Delete blob
-		log.Println("Deleting from cloud...")
 		_, err = cloudService.Delete(cadFile.ObjpURL, service.CADFILE)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
@@ -801,14 +770,13 @@ func (c *controller) DeleteCADFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp, err := cloudService.Delete(cadFile.StepURL, service.CADFILE)
+		_, err = cloudService.Delete(cadFile.StepURL, service.CADFILE)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-		log.Println("Done...: ", resp.StatusCode())
 
 		deleteCount, err := c.cadFileService.Delete(id)
 		if err != nil {

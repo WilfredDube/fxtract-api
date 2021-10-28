@@ -31,11 +31,11 @@ func NewToolService(dbRepository repository.ToolRepository) ToolService {
 
 func (*toolService) Validate(tool *entity.Tool) error {
 	if tool == nil {
-		return errors.New("Tool is empty")
+		return errors.New("tool is empty")
 	}
 
 	if tool.ToolID == "" || tool.ToolName == "" || tool.Angle == 0 || tool.Length == 0 || tool.MinRadius == 0 || tool.MaxRadius == 0 {
-		return errors.New("Fill in all the fields")
+		return errors.New("fill in all the fields")
 	}
 
 	return nil

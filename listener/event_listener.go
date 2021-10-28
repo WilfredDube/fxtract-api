@@ -183,7 +183,6 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 		processingPlan.PartNo = sid.MustGenerate()
 		processingPlan.CreatedAt = time.Now().Unix()
 
-		// TODO: create goroutine to generate and upload pdf
 		pdfBuff, err := p.pdfService.GeneratePDF(&processingPlan)
 		if err != nil {
 			log.Fatalf("%s: %s", "Failed: ", err)
@@ -196,7 +195,6 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 			log.Fatalf("%s: %s", "Failed: ", err)
 		}
 
-		// TODO: get & set the URL and upload the file to the cloud
 		processingPlan.PdfURL = url
 
 		_, err = p.ProcessingPlanService.Create(&processingPlan)

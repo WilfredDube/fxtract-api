@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -49,7 +50,7 @@ type jwtService struct {
 func NewJWTService(store *redistore.RediStore) JWTService {
 	return &jwtService{
 		issuer:    "Fxtract",
-		secretKey: "$2a$10$3Wk/bAObFrEn2/9.92YMGORCguJFHRUAVjbqbYsHHkgoSZIwptFhy",
+		secretKey: os.Getenv("JWT_SECRET"),
 		store:     store,
 	}
 }

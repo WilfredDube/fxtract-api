@@ -119,7 +119,7 @@ func (r *processingPlanRepoConnection) Update(processingPlan entity.ProcessingPl
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "repository.User.Update")
+		return nil, errors.Wrap(err, "repository.ProcessingPlan.Update")
 	}
 
 	return &processingPlan, nil
@@ -210,7 +210,7 @@ func (r *processingPlanRepoConnection) CascadeDelete(processingPlanID string) (i
 	pid, err := primitive.ObjectIDFromHex(processingPlanID)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
-			return 0, errors.Wrap(errors.New("Project {id} incorrect"), "repository.ProcessingPlan.Find")
+			return 0, errors.Wrap(errors.New("Processing plan {id} incorrect"), "repository.ProcessingPlan.Find")
 		}
 		return 0, errors.Wrap(err, "repository.ProcessingPlan.Find")
 	}

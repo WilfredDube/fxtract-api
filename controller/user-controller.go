@@ -95,7 +95,7 @@ func (c *userController) Update(w http.ResponseWriter, r *http.Request) {
 		u, err := c.userService.Update(user)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
@@ -150,7 +150,7 @@ func (c *userController) Promote(w http.ResponseWriter, r *http.Request) {
 		u, err := c.userService.Update(user)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to promote user", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
@@ -337,6 +337,6 @@ func (c *userController) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := helper.BuildErrorResponse("Failed to process request", "User not found", helper.EmptyObj{})
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(w).Encode(response)
 }

@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/WilfredDube/fxtract-backend/configuration"
-	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/go-redis/redis"
 )
 
@@ -35,6 +34,5 @@ func setUpCacheChannel() {
 }
 
 func ClearCache(key string) {
-	helper.DPrintf("Clearing cache: %s", key)
 	cacheChannel <- key
 }

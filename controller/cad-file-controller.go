@@ -16,9 +16,10 @@ import (
 const MaxUploadSize = 1024 * 1024 // 1MB
 
 type cadFileController struct {
-	cadFileService service.CadFileService
-	projectService service.ProjectService
-	jwtService     service.JWTService
+	cadFileService        service.CadFileService
+	projectService        service.ProjectService
+	jwtService            service.JWTService
+	processingPlanService service.ProcessingPlanService
 }
 
 // CadFileController -
@@ -30,15 +31,15 @@ type CadFileController interface {
 }
 
 // NewCADFileController -
-func NewCADFileController(service service.CadFileService, pService service.ProjectService, jwtService service.JWTService) CadFileController {
+func NewCADFileController(service service.CadFileService, pService service.ProjectService, jwtService service.JWTService, processingPlanService service.ProcessingPlanService) CadFileController {
 	return &cadFileController{
-		cadFileService: service,
-		projectService: pService,
-		jwtService:     jwtService,
+		cadFileService:        service,
+		projectService:        pService,
+		jwtService:            jwtService,
+		processingPlanService: processingPlanService,
 	}
 }
 
-// TODO: fix update for FRE
 func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -73,7 +74,7 @@ func (c *cadFileController) Update(w http.ResponseWriter, r *http.Request) {
 	u, err := c.cadFileService.Update(*cadFile)
 	if err != nil {
 		response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -207,7 +208,7 @@ func (c *cadFileController) Delete(w http.ResponseWriter, r *http.Request) {
 		params := mux.Vars(r)
 		id := params["id"]
 
-		_, err := c.cadFileService.Find(id)
+		cadFile, err := c.cadFileService.Find(id)
 		if err != nil {
 			res := helper.BuildErrorResponse("Process failed", "CAD file not found", helper.EmptyObj{})
 			w.WriteHeader(http.StatusNotFound)
@@ -215,24 +216,63 @@ func (c *cadFileController) Delete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		cloudService := service.NewAzureBlobService()
+		_, err = cloudService.Delete(cadFile.ObjpURL, service.CADFILE)
+		if err != nil {
+			res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		_, err = cloudService.Delete(cadFile.StepURL, service.CADFILE)
+		if err != nil {
+			res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		if cadFile.FeatureProps.ProcessLevel == 2 {
+			processingPlan, err := c.processingPlanService.Find(cadFile.ID.Hex())
+			if err != nil {
+				res := helper.BuildErrorResponse("Processing plan not found", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			_, err = cloudService.Delete(processingPlan.PdfURL, service.PDFFILE)
+			if err != nil {
+				res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+
+			_, err = c.processingPlanService.Delete(id)
+			if err != nil {
+				res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
+		}
+
 		deleteCount, err := c.cadFileService.Delete(id)
 		if err != nil {
-			res := helper.BuildErrorResponse("Process failed", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
+			res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
 
 		if deleteCount == 0 {
-			res := helper.BuildErrorResponse("File not found: ", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusNotFound)
+			res := helper.BuildErrorResponse("Deletion failed", err.Error(), helper.EmptyObj{})
+			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
-
-		// Todo: delete blob
-		// helper.DeleteFile(cadFile.StepURL)
-		// helper.DeleteFile(cadFile.ObjpURL)
 
 		res := helper.BuildResponse(true, "OK!", deleteCount)
 		w.WriteHeader(http.StatusOK)

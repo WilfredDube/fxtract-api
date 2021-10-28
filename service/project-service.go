@@ -34,11 +34,11 @@ func NewProjectService(dbRepository repository.ProjectRepository) ProjectService
 
 func (*service) Validate(project *entity.Project) error {
 	if project == nil {
-		return errors.New("Project is empty")
+		return errors.New("project is empty")
 	}
 
 	if project.Title == "" || project.Description == "" {
-		return errors.New("Title or description can not be empty")
+		return errors.New("title or description can not be empty")
 	}
 
 	return nil

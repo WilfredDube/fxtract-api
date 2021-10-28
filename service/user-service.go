@@ -30,11 +30,11 @@ func NewUserService(dbRepository repository.UserRepository) UserService {
 
 func (*userService) Validate(user *entity.User) error {
 	if user == nil {
-		return errors.New("User is empty")
+		return errors.New("user is empty")
 	}
 
 	if user.Firstname == "" || user.Lastname == "" || user.Email == "" || user.Password == "" {
-		return errors.New("Title or description can not be empty")
+		return errors.New("title or description can not be empty")
 	}
 
 	return nil

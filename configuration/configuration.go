@@ -60,12 +60,6 @@ type ServiceConfig struct {
 
 // ExtractConfiguration - extracts all database configurations from a file
 func ExtractConfiguration(filename string) (ServiceConfig, error) {
-
-	os.Setenv("MAIL_VERIFICATION_CODE_EXPIRATION", "24")
-	os.Setenv("PASSWORD_RESET_CODE_EXPIRATION", "15")
-	os.Setenv("MAIL_VERIFICATION_TEMPLATE_ID", "d-fc7203313c074f0e8354787bf2979e21")
-	os.Setenv("PASSWORD_RESET_TEMPLATE_ID", "d-52bdc05ac25242b38e3ebdc45d31a6dc")
-
 	MailVerifCodeExpiration, _ := strconv.ParseInt(os.Getenv("MAIL_VERIFICATION_CODE_EXPIRATION"), 10, 64)
 	PassResetCodeExpiration, _ := strconv.ParseInt(os.Getenv("PASSWORD_RESET_CODE_EXPIRATION"), 10, 64)
 	MailVerifTemplateID := os.Getenv("MAIL_VERIFICATION_TEMPLATE_ID")

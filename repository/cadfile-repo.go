@@ -102,7 +102,7 @@ func (r *cadFileRepoConnection) Update(cadFile entity.CADFile) (*entity.CADFile,
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "repository.User.Update")
+		return nil, errors.Wrap(err, "repository.CADFile.Update")
 	}
 
 	return &cadFile, nil
@@ -147,7 +147,7 @@ func (r *cadFileRepoConnection) FindAll(projectID string) ([]entity.CADFile, err
 	cursor, err := collection.Find(ctx, bson.M{"project_id": id})
 	if err != nil {
 		if err == mongo.ErrNilDocument {
-			return nil, errors.Wrap(errors.New("Projects not found"), "repository.CADFile.FindAll")
+			return nil, errors.Wrap(errors.New("Cadfiles not found"), "repository.CADFile.FindAll")
 		}
 		return nil, errors.Wrap(err, "repository.CADFile.FindAll")
 	}
@@ -241,7 +241,7 @@ func (r *cadFileRepoConnection) CascadeDelete(projectID string) (int64, error) {
 	pid, err := primitive.ObjectIDFromHex(projectID)
 	if err != nil {
 		if err == mongo.ErrNilDocument {
-			return 0, errors.Wrap(errors.New("Project {id} incorrect"), "repository.CADFile.Find")
+			return 0, errors.Wrap(errors.New("Cadfile {id} incorrect"), "repository.CADFile.Find")
 		}
 		return 0, errors.Wrap(err, "repository.CADFile.Find")
 	}

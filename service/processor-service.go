@@ -82,7 +82,6 @@ func (p *Processor) Run() {
 
 		case task := <-p.TaskChannel:
 			if conn, ok := p.Users[task.UserID.Hex()]; ok {
-				// response := helper.BuildResponse(true, "File processing complete", task)
 				response := helper.Response{
 					Status:  true,
 					Message: "File processing complete",
@@ -99,7 +98,6 @@ func (p *Processor) Run() {
 			}
 		case cadFilesResponse := <-p.CADFilesChannel:
 			if conn, ok := p.Users[cadFilesResponse.UserID]; ok {
-				// response := helper.BuildResponse(true, "files", cadFilesResponse.CadFiles)
 				response := helper.Response{
 					Status:  true,
 					Message: "File processing complete",

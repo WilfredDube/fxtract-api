@@ -61,7 +61,7 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 		err := json.NewDecoder(r.Body).Decode(material)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
@@ -77,7 +77,7 @@ func (c *materialController) AddMaterial(w http.ResponseWriter, r *http.Request)
 		err = c.materialService.Validate(material)
 		if err != nil {
 			response := helper.BuildErrorResponse("Failed to process request", err.Error(), helper.EmptyObj{})
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(response)
 			return
 		}
