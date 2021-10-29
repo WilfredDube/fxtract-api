@@ -40,6 +40,7 @@ func NewAzureBlobService() AzureBlobService {
 
 	cred, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 	if err != nil {
+		fmt.Println(err.Error())
 		log.Fatalln(fmt.Sprintf("Not able to connect to storage account: %s", err.Error()))
 	}
 
