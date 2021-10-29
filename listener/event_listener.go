@@ -185,14 +185,14 @@ func (p *EventProcessor) handleEvent(event msgqueue.Event) {
 
 		pdfBuff, err := p.pdfService.GeneratePDF(&processingPlan)
 		if err != nil {
-			log.Fatalf("%s: %s", "Failed: ", err)
+			log.Fatalf("%s: %s", "Failed generate pdf: ", err.Error())
 		}
 
 		pdfBlob := service.NewAzureBlobService()
 		filename := fmt.Sprintf(project.ID.Hex()+"/%s.pdf", processingPlan.ID.Hex())
 		_, url, err := pdfBlob.UploadFromBuffer(&pdfBuff, filename)
 		if err != nil {
-			log.Fatalf("%s: %s", "Failed: ", err)
+			log.Fatalf("%s: %s", "Failed to upload processing plan: ", err.Error())
 		}
 
 		processingPlan.PdfURL = url

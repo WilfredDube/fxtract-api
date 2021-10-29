@@ -533,7 +533,7 @@ func (c *controller) uploadHandler(r *http.Request, projectFolder string, id pri
 		blobname := fmt.Sprintf(projectFolder+"/%d%s", newName, filepath.Ext(fileHeader.Filename))
 		_, blobURL, err := blobService.UploadFromFile(&file, blobname)
 		if err != nil {
-			log.Fatalln("Not able to connect to storage account")
+			log.Fatalln("Failed to upload CAD file: ", err.Error())
 		}
 
 		// insert cad file file metadata into database
