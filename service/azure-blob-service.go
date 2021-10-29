@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
@@ -44,9 +45,6 @@ func NewAzureBlobService() AzureBlobService {
 		log.Fatalln(fmt.Sprintf("Not able to connect to storage account: %s", err.Error()))
 	}
 
-	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	// defer cancel()
-
 	p := azblob.NewPipeline(cred, azblob.PipelineOptions{})
 
 	u, err := url.Parse(fmt.Sprintf(storageURL, accountName))
@@ -62,7 +60,10 @@ func (a *azureBlobService) UploadFromBuffer(buf *bytes.Buffer, filename string) 
 	cURL := a.serviceURL.NewContainerURL(pdfContainer)
 	bURL := cURL.NewBlockBlobURL(filename)
 
-	resp, err := azblob.UploadBufferToBlockBlob(context.Background(), buf.Bytes(), bURL, azblob.UploadToBlockBlobOptions{})
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := azblob.UploadBufferToBlockBlob(ctx, buf.Bytes(), bURL, azblob.UploadToBlockBlobOptions{})
 	if err != nil {
 		return nil, "", err
 	}
