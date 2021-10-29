@@ -181,10 +181,10 @@ func main() {
 		errs <- http.ListenAndServe(config.RestfulEndPoint, server)
 	}()
 
-	go func() {
-		fmt.Printf("Listening on port: %v\n", config.RestfulTLSEndPoint)
-		errs <- http.ListenAndServeTLS(config.RestfulTLSEndPoint, "cert/cert.pem", "cert/key.pem", server)
-	}()
+	// go func() {
+	// 	fmt.Printf("Listening on port: %v\n", config.RestfulTLSEndPoint)
+	// 	errs <- http.ListenAndServeTLS(config.RestfulTLSEndPoint, "cert/cert.pem", "cert/key.pem", server)
+	// }()
 
 	go func() {
 		c := make(chan os.Signal, 1)
