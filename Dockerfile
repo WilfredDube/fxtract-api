@@ -9,9 +9,9 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o fxtractapi -v .
 
-#final stage
-FROM scratch
-WORKDIR /root/
-COPY --from=builder /app/fxtractapi ./
+# #final stage
+# FROM scratch
+# WORKDIR /root/
+# COPY --from=builder /app/fxtractapi ./
 CMD [ "./fxtractapi" ] 
 
