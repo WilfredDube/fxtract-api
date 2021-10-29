@@ -92,7 +92,6 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 		fmt.Println("Config file not found. Continuing with default values.")
 		fmt.Printf("Using: %v %v %v %v %v\n", DBTypeDefault, DBConnectionDefault, DBNameDefault, DBTimeoutDefault, RestfulEPDefault)
 
-		fmt.Println(config)
 		return config, err
 	}
 

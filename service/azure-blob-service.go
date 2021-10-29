@@ -38,6 +38,8 @@ func NewAzureBlobService() AzureBlobService {
 	accountKey := os.Getenv("AZURE_BLOB_STORAGE_KEY")
 	storageURL := os.Getenv("AZURE_BLOB_STORAGE_URL")
 
+	log.Println(storageURL)
+
 	cred, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 	if err != nil {
 		log.Fatalln("Not able to connect to storage account")
