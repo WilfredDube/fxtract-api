@@ -38,6 +38,8 @@ func NewAzureBlobService() AzureBlobService {
 	accountKey := os.Getenv("AZURE_BLOB_STORAGE_KEY")
 	storageURL := os.Getenv("AZURE_BLOB_STORAGE_URL")
 
+	log.Println("Name: ", len(accountName))
+	log.Println("K: ", len(accountKey))
 	log.Println(storageURL)
 
 	cred, err := azblob.NewSharedKeyCredential(accountName, accountKey)
