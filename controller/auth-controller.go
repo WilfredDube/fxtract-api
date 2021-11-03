@@ -264,7 +264,7 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 
 	authResult, err := c.authService.VerifyCredential(user.Email, user.Password)
 	if err != nil {
-		response := helper.BuildErrorResponse("Please check again your credential", err.Error(), helper.EmptyObj{})
+		response := helper.BuildErrorResponse("Wrong email or password", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(response)
 		return
@@ -279,7 +279,7 @@ func (c *authController) Login(w http.ResponseWriter, r *http.Request) {
 
 	err = c.jwtService.SetAuthentication(&authResult, "fxtract", 86400*7, service.LOGIN, w, r)
 	if err != nil {
-		response := helper.BuildErrorResponse("Please check again your credential", err.Error(), helper.EmptyObj{})
+		response := helper.BuildErrorResponse("Wrong email or password", err.Error(), helper.EmptyObj{})
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(response)
 		return
