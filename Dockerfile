@@ -13,10 +13,3 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/fxtractapi .
 ENTRYPOINT [ "./fxtractapi" ]
-
-# #final stage
-# FROM scratch
-# WORKDIR /root/
-# COPY --from=builder /app/fxtractapi ./
-# CMD [ "fxtractapi" ] 
-
