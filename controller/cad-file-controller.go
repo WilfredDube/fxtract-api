@@ -3,11 +3,14 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/WilfredDube/fxtract-backend/entity"
 	"github.com/WilfredDube/fxtract-backend/lib/helper"
 	"github.com/WilfredDube/fxtract-backend/service"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -20,23 +23,31 @@ type cadFileController struct {
 	projectService        service.ProjectService
 	jwtService            service.JWTService
 	processingPlanService service.ProcessingPlanService
+	cache                 *redis.Client
+}
+
+type OBJCached struct {
+	File string `json:"file"`
+	Data string `json:"data"`
 }
 
 // CadFileController -
 type CadFileController interface {
 	FindByID(w http.ResponseWriter, r *http.Request)
+	DownloadOBJ(w http.ResponseWriter, r *http.Request)
 	FindAll(w http.ResponseWriter, r *http.Request)
 	FindAllFiles(w http.ResponseWriter, r *http.Request)
 	Delete(w http.ResponseWriter, r *http.Request)
 }
 
 // NewCADFileController -
-func NewCADFileController(service service.CadFileService, pService service.ProjectService, jwtService service.JWTService, processingPlanService service.ProcessingPlanService) CadFileController {
+func NewCADFileController(service service.CadFileService, pService service.ProjectService, jwtService service.JWTService, processingPlanService service.ProcessingPlanService, cache *redis.Client) CadFileController {
 	return &cadFileController{
 		cadFileService:        service,
 		projectService:        pService,
 		jwtService:            jwtService,
 		processingPlanService: processingPlanService,
+		cache:                 cache,
 	}
 }
 
@@ -188,6 +199,70 @@ func (c *cadFileController) FindAllFiles(w http.ResponseWriter, r *http.Request)
 		res := helper.BuildResponse(true, "OK!", projects)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(res)
+		return
+	}
+}
+
+func (c *cadFileController) DownloadOBJ(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token, err := c.jwtService.GetAuthenticationToken(r, "fxtract")
+	if err != nil {
+		response := helper.BuildErrorResponse("Unauthorised", "User not authenticated", helper.EmptyObj{})
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		uri := r.FormValue("url")
+
+		result, err := c.cache.Get(uri).Result()
+
+		var data, filename string
+		var objCached *OBJCached
+		if err != nil {
+			objBlob := service.NewAzureBlobService()
+
+			data, filename, err = objBlob.GetOBj(uri)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			objCached = &OBJCached{File: filename, Data: data}
+
+			bytes, err := json.Marshal(objCached)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if err := c.cache.Set(uri, bytes, 10*time.Minute).Err(); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			f, err := os.Create("objs/" + objCached.File)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			defer f.Close()
+
+			_, err = f.WriteString(objCached.Data)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+		} else {
+			json.Unmarshal([]byte(result), &objCached)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode("http://localhost:8000/objs/" + objCached.File)
 		return
 	}
 }

@@ -28,6 +28,7 @@ type AzureBlobService interface {
 	UploadFromBuffer(b *bytes.Buffer, filename string) (azblob.CommonResponse, string, error)
 	UploadFromFile(file *multipart.File, filename string) (azblob.CommonResponse, string, error)
 	Delete(url string, ftype FILETYPE) (*azblob.BlobDeleteResponse, error)
+	GetOBj(url string) (string, string, error)
 }
 
 type azureBlobService struct {
@@ -81,6 +82,31 @@ func (a *azureBlobService) UploadFromFile(file *multipart.File, filename string)
 	}
 
 	return resp, bURL.String(), nil
+}
+
+func (a *azureBlobService) GetOBj(fileURL string) (string, string, error) {
+	cURL := a.serviceURL.NewContainerURL(cadFileContainer)
+	link, _ := url.Parse(fileURL)
+	urlParts := strings.Split(link.Path, "/")
+
+	bURL := cURL.NewBlockBlobURL(fmt.Sprintf("%s/%s", urlParts[2], urlParts[3]))
+
+	downloadResponse, err := bURL.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
+
+	// NOTE: automatically retries are performed if the connection fails
+	bodyStream := downloadResponse.Body(azblob.RetryReaderOptions{MaxRetryRequests: 20})
+	if err != nil {
+		return "", "", err
+	}
+
+	// read the body into a buffer
+	downloadedData := bytes.Buffer{}
+	_, err = downloadedData.ReadFrom(bodyStream)
+	if err != nil {
+		return "", "", err
+	}
+
+	return downloadedData.String(), urlParts[3], nil
 }
 
 func (a *azureBlobService) Delete(fileURL string, ftype FILETYPE) (*azblob.BlobDeleteResponse, error) {

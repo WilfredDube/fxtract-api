@@ -85,7 +85,7 @@ func main() {
 	projectService := service.NewProjectService(projectRepo)
 	projectController := controller.NewProjectController(projectService, userService, cadFileService, processingPlanService, JWTService, redisCache)
 
-	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService, processingPlanService)
+	cadFileController := controller.NewCADFileController(cadFileService, projectService, JWTService, processingPlanService, redisCache)
 
 	toolRepo := repository.NewToolRepository(*repo)
 	toolService := service.NewToolService(toolRepo)
@@ -103,6 +103,9 @@ func main() {
 	freController := controller.NewFREController(config, cadFileService, processingPlanService, userService, JWTService, taskService, redisCache, eventEmitter, processorController)
 
 	r := mux.NewRouter()
+
+	d := "/objs/"
+	r.PathPrefix(d).Handler(http.StripPrefix(d, http.FileServer(http.Dir("."+d))))
 
 	// Project creation and CAD file upload
 	r.HandleFunc("/api/user/projects", projectController.AddProject).Methods("POST")
@@ -156,6 +159,9 @@ func main() {
 
 	// Files uploaded
 	r.HandleFunc("/api/admin/files", middleware.CheckAdminRole(JWTService, cadFileController.FindAllFiles)).Methods("GET")
+
+	// Download OBJ file
+	r.HandleFunc("/api/user/projects/files", cadFileController.DownloadOBJ).Methods("POST").Queries("url", "{url}")
 
 	// Tasks
 	r.HandleFunc("/api/admin/tasks", middleware.CheckAdminRole(JWTService, taskController.FindAll)).Methods("GET")
