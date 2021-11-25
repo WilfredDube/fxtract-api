@@ -262,7 +262,8 @@ func (c *cadFileController) DownloadOBJ(w http.ResponseWriter, r *http.Request) 
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode("http://localhost:8000/objs/" + objCached.File)
+		// json.NewEncoder(w).Encode("http://localhost:8000/objs/" + objCached.File)
+		json.NewEncoder(w).Encode(objCached.Data)
 		return
 	}
 }
