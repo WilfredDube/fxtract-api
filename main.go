@@ -170,7 +170,7 @@ func main() {
 
 	// processes: type, status
 
-	originsObj := handlers.AllowedOrigins([]string{"http://localhost:3000"})
+	originsObj := handlers.AllowedOrigins([]string{"*"})
 	credentials := handlers.AllowCredentials()
 	headersObj := handlers.AllowedHeaders([]string{"Origin", "Access-Control, Allow-Origin", "Content-Type",
 		"Accept", "Authorization", "Origin, Accept", "X-Requested-With",
